@@ -3,7 +3,7 @@
 volatile int tma_flag=FALSE;
 volatile int sec_flag=FALSE;
 volatile int tmv_flag=FALSE;
-volatile int sec=0;
+volatile long sec=85000;
 
 volatile int tempo_flag=FALSE;
 int tempo_compare=0;
@@ -24,10 +24,10 @@ void int_timera(void){
 	tma_flag = TRUE;
 	//	EI();         /* 必要に応じて EI()を実行  */
 	/*32回呼び出されたら，if文の中が実行されて，sec_flagが有効になる*/
-	if(++count >= 32){
+	if(++count >= 1){
 	      count=0;
 	      sec_flag = TRUE;
-	      sec++;               /* secは，1秒ごとにインクリメントされる*/
+	      sec=(volatile long)sec+1;               /* secは，1秒ごとにインクリメントされる*/
 	}
 
 #ifdef DEBUG
@@ -140,6 +140,7 @@ enum MENU_MODE{
   MODE_0,
   MODE_1,
   MODE_2,
+  MODE_3,
   MODE_OUT_OF_MAX
 };
 
@@ -168,6 +169,7 @@ typedef struct _UI_DATA{
 extern void do_mode0(UI_DATA* ui_data);
 extern void do_mode1(UI_DATA* ui_data);
 extern void do_mode2(UI_DATA* ui_data);
+extern void do_mode3(UI_DATA* ui_data);
 
 UI_DATA* ui(char sw){ /* ミーリ型？ムーア型？どっちで実装？良く考えて */
   static UI_DATA ui_data={MODE_0,MODE_0,};
@@ -185,6 +187,9 @@ UI_DATA* ui(char sw){ /* ミーリ型？ムーア型？どっちで実装？良�
     break;
   case MODE_2:
     do_mode2(&ui_data);
+    break;
+  case MODE_3:
+    do_mode3(&ui_data);
     break;
   default:
     break;
@@ -375,6 +380,48 @@ void do_mode2(UI_DATA* ud){
     ud->mode=MODE_0; /* 次は，モード0に戻る */
     break;
   }
+}
+
+void show_tokei(void){
+  char data[9];
+  int h,m,s;
+  long sec_hold=sec; /* 値を生成している最中に，secが変わると嫌なので，   */
+                    /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
+                    /* で変化させているので，運が悪いと処理中に変化する。*/
+
+  s=sec_hold % 60;
+  m=((sec_hold / 60)%60); /* ここで，hの値の健全性は，検証していないからね。*/
+                     /* ヒントは，「secは，int型」*/
+  h=((sec_hold / 3600)%24);
+
+  data[0]='0'+h/10;
+  data[1]='0'+h%10;
+  data[2]=':';
+  data[3]='0'+m/10;
+  data[4]='0'+m%10;
+  data[5]=':';
+  data[6]='0'+s/10;
+  data[7]='0'+s%10;
+  data[8]='\0';
+
+  lcd_putstr(16-8,1,data);
+
+}
+
+void do_mode3(UI_DATA* ud){
+  if(ud->prev_mode!=ud->mode || sec_flag==TRUE){
+    lcd_clear();
+    lcd_putstr(0,0,"MODE3:24ｼﾞｶﾝｲﾄｹｲ");
+    show_tokei();
+    sec_flag=FALSE;
+  }
+  
+  switch(ud->sw){  /*モード内でのキー入力別操作*/
+  case KEY_LONG_C:  /* 中央キーの長押し */
+    ud->mode=MODE_0; /* 次は，モード0に戻る */
+    break;
+  }
+
 }
 
 
