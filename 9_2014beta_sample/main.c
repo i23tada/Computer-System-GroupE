@@ -3,7 +3,7 @@
 volatile int tma_flag=FALSE;
 volatile int sec_flag=FALSE;
 volatile int tmv_flag=FALSE;
-volatile long sec=85000;
+volatile long sec=0;
 
 volatile int tempo_flag=FALSE;
 int tempo_compare=0;
@@ -419,6 +419,15 @@ void do_mode3(UI_DATA* ud){
   switch(ud->sw){  /*モード内でのキー入力別操作*/
   case KEY_LONG_C:  /* 中央キーの長押し */
     ud->mode=MODE_0; /* 次は，モード0に戻る */
+    break;
+  case KEY_SHORT_U:
+    sec=(volatile long)sec+3600;
+    break;
+  case KEY_SHORT_R:
+    sec=(volatile long)sec+60;
+    break;
+    case KEY_SHORT_D:
+    sec=(volatile long)0;
     break;
   }
 
