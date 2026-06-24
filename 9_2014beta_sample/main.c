@@ -7,6 +7,9 @@ volatile long sec=0;
 
 volatile int tempo_flag=FALSE;
 int tempo_compare=0;
+int s[5] = {0,0,0,0,0};
+char x[4]={'+','-','*','/'};
+int i=0,j=0;
 
 #define DEBUG          /* デバッグ中は，定義しておく */
 
@@ -27,7 +30,7 @@ void int_timera(void){
 	if(++count >= 1){
 	      count=0;
 	      sec_flag = TRUE;
-	      sec=(volatile long)sec+1;               /* secは，1秒ごとにインクリメントされる*/
+	      sec=sec+1;               /* secは，1秒ごとにインクリメントされる*/
 	}
 
 #ifdef DEBUG
@@ -141,6 +144,7 @@ enum MENU_MODE{
   MODE_1,
   MODE_2,
   MODE_3,
+  MODE_8,
   MODE_OUT_OF_MAX
 };
 
@@ -170,6 +174,7 @@ extern void do_mode0(UI_DATA* ui_data);
 extern void do_mode1(UI_DATA* ui_data);
 extern void do_mode2(UI_DATA* ui_data);
 extern void do_mode3(UI_DATA* ui_data);
+extern void do_mode8(UI_DATA* ui_data);
 
 UI_DATA* ui(char sw){ /* ミーリ型？ムーア型？どっちで実装？良く考えて */
   static UI_DATA ui_data={MODE_0,MODE_0,};
@@ -190,6 +195,9 @@ UI_DATA* ui(char sw){ /* ミーリ型？ムーア型？どっちで実装？良�
     break;
   case MODE_3:
     do_mode3(&ui_data);
+    break;
+  case MODE_8:
+    do_mode8(&ui_data);
     break;
   default:
     break;
@@ -345,7 +353,7 @@ void do_mode1(UI_DATA* ud){
 void show_sec(void){
   char data[6];
   int h,s;
-  int sec_hold=sec; /* 値を生成している最中に，secが変わると嫌なので，   */
+  long sec_hold=sec; /* 値を生成している最中に，secが変わると嫌なので，   */
                     /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
                     /* で変化させているので，運が悪いと処理中に変化する。*/
 
@@ -433,6 +441,93 @@ void do_mode3(UI_DATA* ud){
 
 }
 
+void show_dentaku() {
+  int s1=(unsigned)(s[0]*10+s[1]);
+  int s2=(unsigned)(s[3]*10+s[4]);
+  unsigned int kekka=0;
+  char data[14];
+  data[0]='0'+s[0];
+  data[1]='0'+s[1];
+  data[2]=x[j];
+  data[3]='0'+s[3];
+  data[4]='0'+s[4];
+  data[5]='=';
+
+  if(s2==0&&j==3){
+    data[6]='!';
+    data[7]='!';
+    data[8]='!';
+    data[9]='!';
+    data[10]='!';
+    data[11]='!';
+    data[12]='!';
+  }else{
+    if(j==0) kekka=s1+s2;
+    if(j==1) kekka=abs(s1-s2);
+    if(j==2) kekka=s1*s2;
+    if(j==3) kekka=s1/s2;
+
+    data[6]='0'+((kekka/1000)%10);
+    if(s1-s2<0&&j==1) data[6]='-';
+    data[7]='0'+((kekka/100)%10);
+    data[8]='0'+((kekka/10)%10);
+    data[9]='0'+(kekka%10);
+
+    data[10]='.';
+    data[11]='0';
+    data[12]='0';
+    if(j==3){
+      data[11]+=((s1*10/s2)%10);
+      data[12]+=((s1*100/s2)%10);
+    }{
+  
+    }
+  }
+
+  data[13]='\0';
+
+  lcd_putstr(0,1,data);
+}
+
+void do_mode8(UI_DATA* ud){
+  if(ud->prev_mode!=ud->mode || sec_flag==TRUE){
+    lcd_clear();
+    lcd_putstr(0,0,"MODE8:ﾃﾞﾝﾀｸ");
+    show_dentaku();
+  }
+
+  switch(ud->sw){
+  case KEY_LONG_C:
+    ud->mode=MODE_0;
+    break;
+  case KEY_SHORT_R:
+  if(i<4) i++;
+    break;
+  case KEY_SHORT_L:
+  if(i>0) i--;
+    break;
+  case KEY_SHORT_U:
+    if(i==2){
+      if(j<3) j++;
+      else j=0;
+    }
+    else {
+      if(s[i]<9) s[i]++;
+      else s[i]=0;
+    }
+    break;
+  case KEY_SHORT_D:
+    if(i==2){
+      if(j>0) j--;
+      else j=3;
+    }
+    else{
+      if(s[i]>0) s[i]--;
+      else s[i]=9;
+    }
+    break;
+  }
+}
 
 
 int main(void){
