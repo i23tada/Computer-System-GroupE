@@ -398,9 +398,11 @@ int calc(int a, int b, char op) {
   }
 }
 
+// ゲームの横と縦の高さ設定
 #define GAME_W 8
 #define GAME_H 8
 
+// LEDを全て消す
 static void matrix_clear_all(void) {
   int x;
   for (x = 0; x < 8; x++) {
@@ -408,13 +410,13 @@ static void matrix_clear_all(void) {
   }
 }
 
-static void matrix_set_dot(int x, int y) {
-  if (x < 0 || x >= GAME_W || y < 0 || y >= GAME_H) return;
 
-  /*
-   * まずは上位8bit側を使う。
-   * 表示位置が上下逆なら (0x8000 >> y) を (0x0100 << y) に変えてみる。
-   */
+static void matrix_set_dot(int x, int y) {
+  // 変な値を弾く処理
+  if (x < 0 || x >= GAME_W || y < 0 || y >= GAME_H) return;
+  // matrix配列のx列目とのor
+  // x列目のデータのうち、y行目に対応するbitだけ1にする
+  // yが0だと赤8個、緑8個のLEDの列の一番奥に1が送られるから、8×8LEDのx列目の一番下の部分になる
   matrix_led_pattern[x] |= (0x8000 >> y);
 }
 
@@ -426,33 +428,44 @@ void do_mode4(UI_DATA* ud) {
   static int miss;
   static int tick;
 
+  // 別のモードからこのモードに来たときの処理
   if (ud->prev_mode != ud->mode) {
     lcd_clear();
 
+    // プレイヤーの位置
     player_x = 3;
-    fall_x   = 0;
-    fall_y   = 0;
-    score    = 0;
-    miss     = 0;
-    tick     = 0;
+    // 落ちてくるやつのx座標
+    fall_x = 0;
+    // 落ちてくるやつのy座標
+    fall_y = 0;
+    // スコア
+    score = 0;
+    // ミスした回数
+    miss = 0;
+    tick = 0;
 
+    // LEDをクリアする
     matrix_clear_all();
 
+    // 初期表示
     lcd_putstr(0, 0, "CATCH GAME");
     lcd_putstr(0, 1, "SCORE=000 M=0");
   }
 
   switch (ud->sw) {
+    // 左に動く
     case KEY_SHORT_L:
       player_x--;
       if (player_x < 0) player_x = 0;
       break;
 
+    // 右に動く
     case KEY_SHORT_R:
       player_x++;
       if (player_x >= GAME_W) player_x = GAME_W - 1;
       break;
 
+    // モード0に戻る
     case KEY_LONG_C:
       matrix_clear_all();
       ud->mode = MODE_0;
@@ -463,11 +476,15 @@ void do_mode4(UI_DATA* ud) {
   }
 
   /* do_mode4は約1/32秒ごとに呼ばれるので、数回に1回だけ落とす */
+  // 5回に一回
+  // ここの回数を変えると落ちる速度を変えられる
   tick++;
   if (tick >= 5) {
     tick = 0;
+    // 5回に1回yを足して上に動かす
     fall_y++;
 
+    // 一番上まで来たらそのときのプレイヤーと位置が一緒かチェック
     if (fall_y >= GAME_H) {
       if (fall_x == player_x) {
         score++;
@@ -478,6 +495,7 @@ void do_mode4(UI_DATA* ud) {
       fall_y = 0;
 
       /* 簡易ランダムっぽく横位置を変える */
+      // if文の中に入れることで、上に来るまではxは固定
       fall_x = (fall_x + 3) & 0x07;
     }
   }
@@ -485,16 +503,18 @@ void do_mode4(UI_DATA* ud) {
   matrix_clear_all();
 
   /* 落ちてくるLED */
+  // 毎回呼ばれるたびにセットし直す
   matrix_set_dot(fall_x, fall_y);
 
   /* 下のキャッチャー */
+  // 一番上に固定
   matrix_set_dot(player_x, GAME_H - 1);
 
   lcd_putstr(0, 0, "CATCH GAME");
   lcd_putstr(0, 1, "SCORE=");
   lcd_putdec(6, 1, 3, score);
   lcd_putstr(10, 1, "M=");
-  lcd_putdec(12, 1, 1, miss);
+  lcd_putdec(12, 1, 2, miss);
 }
 
 int main(void) {
