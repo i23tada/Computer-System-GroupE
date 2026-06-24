@@ -527,9 +527,11 @@ void do_mode4(UI_DATA* ud) {
     matrix_clear_all();
 
     lcd_clear();
-    lcd_putstr(0, 0, "GAME OVER");
+    lcd_putstr(0, 0, "FINISH");
     lcd_putstr(0, 1, "S=");
     lcd_putdec(2, 1, 3, score);
+    lcd_putstr(6, 1, "M=");
+    lcd_putdec(8, 1, 2, miss);
     return;
   }
 
