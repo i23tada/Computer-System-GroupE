@@ -429,21 +429,22 @@ void do_mode3(UI_DATA* ud){
   case KEY_LONG_C:  /* 中央キーの長押し */
     ud->mode=MODE_0; /* 次は，モード0に戻る */
     break;
-  case KEY_SHORT_U:
+  case KEY_SHORT_L:
     sec=(volatile long)sec+3600;
     break;
-  case KEY_SHORT_R:
+  case KEY_SHORT_U:
     sec=(volatile long)sec+60;
     break;
-    case KEY_SHORT_D:
+  case KEY_SHORT_R:
+    sec=(volatile long)sec+1;
+    break;
+  case KEY_LONG_D:
     sec=(volatile long)0;
     break;
-  case KEY_SHORT_L:
-    if(stop_flag==FALSE){
-      stop_flag=TRUE;
-    }else{
-      stop_flag=FALSE;
-    }
+  case KEY_SHORT_D:
+    if(stop_flag==FALSE) stop_flag=TRUE;
+    else stop_flag=FALSE;
+    break;
   }
 }
 
