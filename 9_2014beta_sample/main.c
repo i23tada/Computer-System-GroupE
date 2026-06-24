@@ -137,7 +137,7 @@ void timer_init(void) {
 
 /* 適切なモード名を入れることが望ましいが，MODE_0～とする。 */
 /* 美しい書き方をするならば，適切なテーブルを持つ必要がある */
-enum MENU_MODE { MODE_OUT_OF_MIN = -1, MODE_0, MODE_1, MODE_2, MODE_4, MODE_OUT_OF_MAX };
+enum MENU_MODE { MODE_OUT_OF_MIN = -1, MODE_0, MODE_1, MODE_2, MODE_3, MODE_4, MODE_OUT_OF_MAX };
 
 // うぅ。下記のKとkの見分け(大文字小文字の見分け)が付かずに，
 // １時間半の痛恨のロス(2011/12/19 00:37 by T.NITTA)
@@ -164,6 +164,7 @@ typedef struct _UI_DATA {
 extern void do_mode0(UI_DATA* ui_data);
 extern void do_mode1(UI_DATA* ui_data);
 extern void do_mode2(UI_DATA* ui_data);
+extern void do_mode3(UI_DATA* ui_data);
 extern void do_mode4(UI_DATA* ui_data);
 
 UI_DATA* ui(char sw) { /* ミーリ型？ムーア型？どっちで実装？良く考えて */
@@ -184,6 +185,9 @@ UI_DATA* ui(char sw) { /* ミーリ型？ムーア型？どっちで実装？良
       do_mode1(&ui_data);
       break;
     case MODE_2:
+      do_mode2(&ui_data);
+      break;
+    case MODE_3:
       do_mode2(&ui_data);
       break;
     case MODE_4:
@@ -374,6 +378,8 @@ void do_mode2(UI_DATA* ud) {
   }
 }
 
+void do_mode3(UI_DATA* ud) {}
+
 // 計算やる部分(a,bに数、opに演算子)
 int calc(int a, int b, char op) {
   switch (op) {
@@ -401,7 +407,7 @@ void do_mode4(UI_DATA* ud) {
   if (ud->prev_mode != ud->mode) { /* 他のモード遷移した時に実行 */
     /*必要なら，何らかのモードの初期化処理*/
     lcd_clear();
-    lcd_putstr(0, 0, "MODE1"); /*モード1の初期表示*/
+    lcd_putstr(0, 0, "MODE4"); /*モード1の初期表示*/
   }
 
   switch (ud->sw) { /*モード内でのキー入力別操作*/
