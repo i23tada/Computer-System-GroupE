@@ -455,9 +455,12 @@ void do_mode4(UI_DATA* ud) {
     default: /*上記以外*/
       break;
   }
-  lcd_putdec(0, 0, 3, a);
-  lcd_putch(4, 0, op);
-  lcd_putdec(6, 0, 3, b);
+  lcd_putdec(6, 0, 3, a);
+  char s[2];
+  s[0] = op;
+  s[1] = '\0';
+  lcd_putstr(9, 0, s);
+  lcd_putdec(10, 0, 3, b);
   lcd_putdec(0, 1, 5, view);
 }
 
