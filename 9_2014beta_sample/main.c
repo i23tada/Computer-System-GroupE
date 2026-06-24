@@ -399,15 +399,19 @@ int calc(int a, int b, char op) {
 
 void do_mode4(UI_DATA* ud) {
   static int next_mode_data = MODE_0;
-  static int a              = 0;
-  static int b              = 0;
-  static int view           = 0;
+  static int a;
+  static int b;
+  static int view;
   static char op;
 
   if (ud->prev_mode != ud->mode) { /* 他のモード遷移した時に実行 */
     /*必要なら，何らかのモードの初期化処理*/
     lcd_clear();
     lcd_putstr(0, 0, "MODE4"); /*モード1の初期表示*/
+    a    = 0;
+    b    = 0;
+    view = 0;
+    op   = '+';
   }
 
   switch (ud->sw) { /*モード内でのキー入力別操作*/
@@ -451,18 +455,10 @@ void do_mode4(UI_DATA* ud) {
     default: /*上記以外*/
       break;
   }
-  if (sec_flag == TRUE) { /* 1秒ごとの処理*/
-    lcd_clear();
-    lcd_putdec(0, 1, 5, view); /* LCDの下の行(1行目)に，計算結果を表示 */
-
-    /*コメント：ここでは，LCDの再描画処理を1秒ごとに行っている。        */
-    /*これは，万が一，予期せぬノイズで，LCDの表示に誤動作が発生しても， */
-    /*1秒後には，回復させるという効果を期待している。ハードの世界では， */
-    /*いくら工夫しても，防ぎようが無いノイズがあったりするのです…。    */
-    /*不具合の発生確率は，「コストをある程度かければ」下げることが可能。*/
-
-    sec_flag = FALSE;
-  }
+  lcd_putdec(0, 0, 3, a);
+  lcd_putch(4, 0, op);
+  lcd_putdec(6, 0, 3, b);
+  lcd_putdec(0, 1, 5, view);
 }
 
 int main(void) {
