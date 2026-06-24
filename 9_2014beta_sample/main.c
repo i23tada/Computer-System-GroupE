@@ -410,7 +410,7 @@ static void matrix_clear_all(void) {
   }
 }
 
-
+// 任意の(x,y)のLEDを点灯
 static void matrix_set_dot(int x, int y) {
   // 変な値を弾く処理
   if (x < 0 || x >= GAME_W || y < 0 || y >= GAME_H) return;
@@ -420,6 +420,7 @@ static void matrix_set_dot(int x, int y) {
   matrix_led_pattern[x] |= (0x8000 >> y);
 }
 
+// LEDキャッチゲーム
 void do_mode4(UI_DATA* ud) {
   static int player_x;
   static int fall_x;
