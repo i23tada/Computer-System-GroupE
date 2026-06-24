@@ -427,9 +427,13 @@ void do_mode4(UI_DATA* ud) {
   static int score;
   static int miss;
   static int tick;
+  static int start_sec;
+  static int game_over;
+  static int restart;
 
-  // 別のモードからこのモードに来たときの処理
-  if (ud->prev_mode != ud->mode) {
+  // 別のモードからこのモードに来たときの処理、もしくはリスタート時
+  if (ud->prev_mode != ud->mode || restart) {
+    restart = FALSE;
     lcd_clear();
 
     // プレイヤーの位置
@@ -442,7 +446,12 @@ void do_mode4(UI_DATA* ud) {
     score = 0;
     // ミスした回数
     miss = 0;
+    // 何秒ごとにLEDを落とすかに関係する変数
     tick = 0;
+    // 始まったsec
+    start_sec = sec;
+    // ゲーム終了かどうか
+    game_over = FALSE;
 
     // LEDをクリアする
     matrix_clear_all();
@@ -465,6 +474,11 @@ void do_mode4(UI_DATA* ud) {
       if (player_x >= GAME_W) player_x = GAME_W - 1;
       break;
 
+    // ゲームオーバーから復活
+    case KEY_SHORT_U:
+      restart = TRUE;
+      break;
+
     // モード0に戻る
     case KEY_LONG_C:
       matrix_clear_all();
@@ -475,32 +489,49 @@ void do_mode4(UI_DATA* ud) {
       break;
   }
 
-  /* do_mode4は約1/32秒ごとに呼ばれるので、数回に1回だけ落とす */
-  // 5回に一回
-  // ここの回数を変えると落ちる速度を変えられる
-  tick++;
-  if (tick >= 5) {
-    tick = 0;
-    // 5回に1回yを足して上に動かす
-    fall_y++;
+  // 30秒経ったかどうか
+  if ((sec - start_sec) >= 30) {
+    game_over = TRUE;
+  }
 
-    // 一番上まで来たらそのときのプレイヤーと位置が一緒かチェック
-    if (fall_y >= GAME_H) {
-      if (fall_x == player_x) {
-        score++;
-      } else {
-        miss++;
+  if (game_over == FALSE) {
+    /* do_mode4は約1/32秒ごとに呼ばれるので、数回に1回だけ落とす */
+    // 5回に一回
+    // ここの回数を変えると落ちる速度を変えられる
+    tick++;
+    if (tick >= 5) {
+      tick = 0;
+      // 5回に1回yを足して上に動かす
+      fall_y++;
+
+      // 一番上まで来たらそのときのプレイヤーと位置が一緒かチェック
+      if (fall_y >= GAME_H) {
+        if (fall_x == player_x) {
+          score++;
+        } else {
+          miss++;
+        }
+
+        fall_y = 0;
+
+        /* 簡易ランダムっぽく横位置を変える */
+        // if文の中に入れることで、上に来るまではxは固定
+        fall_x = (fall_x + 3) & 0x07;
       }
-
-      fall_y = 0;
-
-      /* 簡易ランダムっぽく横位置を変える */
-      // if文の中に入れることで、上に来るまではxは固定
-      fall_x = (fall_x + 3) & 0x07;
     }
   }
 
   matrix_clear_all();
+
+  if (game_over) {
+    matrix_clear_all();
+
+    lcd_clear();
+    lcd_putstr(0, 0, "GAME OVER");
+    lcd_putstr(0, 1, "S=");
+    lcd_putdec(2, 1, 3, score);
+    return;
+  }
 
   /* 落ちてくるLED */
   // 毎回呼ばれるたびにセットし直す
@@ -511,8 +542,13 @@ void do_mode4(UI_DATA* ud) {
   matrix_set_dot(player_x, GAME_H - 1);
 
   lcd_putstr(0, 0, "CATCH GAME");
+  // 残り時間
+  lcd_putstr(11, 0, "T=");
+  lcd_putdec(13, 0, 2, 30 - (sec - start_sec));
+  // スコア
   lcd_putstr(0, 1, "SCORE=");
   lcd_putdec(6, 1, 3, score);
+  // ミス回数
   lcd_putstr(10, 1, "M=");
   lcd_putdec(12, 1, 2, miss);
 }
