@@ -397,6 +397,13 @@ void do_mode4(UI_DATA* ud) {
   static int b              = 0;
   static int view           = 0;
   static char op;
+
+  if (ud->prev_mode != ud->mode) { /* 他のモード遷移した時に実行 */
+    /*必要なら，何らかのモードの初期化処理*/
+    lcd_clear();
+    lcd_putstr(0, 0, "MODE1"); /*モード1の初期表示*/
+  }
+
   switch (ud->sw) { /*モード内でのキー入力別操作*/
 
     case KEY_SHORT_U: /* 上短押し */
