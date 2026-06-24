@@ -192,6 +192,7 @@ UI_DATA* ui(char sw) { /* ミーリ型？ムーア型？どっちで実装？良
       break;
     case MODE_4:
       do_mode4(&ui_data);
+      break;
     default:
       break;
   }
@@ -397,71 +398,103 @@ int calc(int a, int b, char op) {
   }
 }
 
+#define GAME_W 8
+#define GAME_H 8
+
+static void matrix_clear_all(void) {
+  int x;
+  for (x = 0; x < 8; x++) {
+    matrix_led_pattern[x] = 0x0000;
+  }
+}
+
+static void matrix_set_dot(int x, int y) {
+  if (x < 0 || x >= GAME_W || y < 0 || y >= GAME_H) return;
+
+  /*
+   * まずは上位8bit側を使う。
+   * 表示位置が上下逆なら (0x8000 >> y) を (0x0100 << y) に変えてみる。
+   */
+  matrix_led_pattern[x] |= (0x8000 >> y);
+}
+
 void do_mode4(UI_DATA* ud) {
-  static int next_mode_data = MODE_0;
-  static int a;
-  static int b;
-  static int view;
-  static char op;
+  static int player_x;
+  static int fall_x;
+  static int fall_y;
+  static int score;
+  static int miss;
+  static int tick;
 
-  if (ud->prev_mode != ud->mode) { /* 他のモード遷移した時に実行 */
-    /*必要なら，何らかのモードの初期化処理*/
+  if (ud->prev_mode != ud->mode) {
     lcd_clear();
-    lcd_putstr(0, 0, "MODE4"); /*モード1の初期表示*/
-    a    = 0;
-    b    = 0;
-    view = 0;
-    op   = '+';
+
+    player_x = 3;
+    fall_x   = 0;
+    fall_y   = 0;
+    score    = 0;
+    miss     = 0;
+    tick     = 0;
+
+    matrix_clear_all();
+
+    lcd_putstr(0, 0, "CATCH GAME");
+    lcd_putstr(0, 1, "SCORE=000 M=0");
   }
 
-  switch (ud->sw) { /*モード内でのキー入力別操作*/
-
-    case KEY_SHORT_U: /* 上短押し */
-      op = '+';
+  switch (ud->sw) {
+    case KEY_SHORT_L:
+      player_x--;
+      if (player_x < 0) player_x = 0;
       break;
 
-    case KEY_SHORT_C: /* 中央キー短押し */
-      op = '-';
+    case KEY_SHORT_R:
+      player_x++;
+      if (player_x >= GAME_W) player_x = GAME_W - 1;
       break;
 
-    case KEY_SHORT_D: /* 下短押し */
-      op = '*';
+    case KEY_LONG_C:
+      matrix_clear_all();
+      ud->mode = MODE_0;
       break;
 
-    case KEY_SHORT_L: /* 左短押し */
-      a += 1;
-      break;
-
-    case KEY_SHORT_R: /* 右短押し */
-      b += 1;
-      break;
-
-    case KEY_LONG_L: /* 左長押し */
-      a -= 1;
-      break;
-
-    case KEY_LONG_R: /* 右長押し */
-      b -= 1;
-      break;
-
-    case KEY_LONG_U: /* 上長押し*/
-      view = calc(a, b, op);
-      break;
-
-    case KEY_LONG_C:             /* 中央キーの長押し */
-      ud->mode = next_mode_data; /*次は，モード変更*/
-      break;
-
-    default: /*上記以外*/
+    default:
       break;
   }
-  lcd_putdec(6, 0, 3, a);
-  char s[2];
-  s[0] = op;
-  s[1] = '\0';
-  lcd_putstr(9, 0, s);
-  lcd_putdec(10, 0, 3, b);
-  lcd_putdec(0, 1, 5, view);
+
+  /* do_mode4は約1/32秒ごとに呼ばれるので、数回に1回だけ落とす */
+  tick++;
+  if (tick >= 5) {
+    tick = 0;
+    fall_y++;
+
+    if (fall_y >= GAME_H) {
+      if (fall_x == player_x) {
+        score++;
+      } else {
+        miss++;
+      }
+
+      fall_y = 0;
+
+      /* 簡易ランダムっぽく横位置を変える */
+      fall_x = (fall_x + 3) & 0x07;
+    }
+  }
+
+  matrix_clear_all();
+
+  /* 落ちてくるLED */
+  matrix_set_dot(fall_x, fall_y);
+
+  /* 下のキャッチャー */
+  matrix_set_dot(player_x, GAME_H - 1);
+
+  lcd_putstr(0, 0, "CATCH GAME");
+  lcd_putstr(0, 1, "SCORE=");
+  lcd_putdec(6, 1, 3, score);
+  lcd_putstr(10, 1, "M=");
+  lcd_putdec(12, 1, 1, miss);
 }
 
 int main(void) {
