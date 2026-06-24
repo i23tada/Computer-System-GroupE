@@ -3,6 +3,7 @@
 volatile int tma_flag=FALSE;
 volatile int sec_flag=FALSE;
 volatile int tmv_flag=FALSE;
+volatile int stop_flag=FALSE;
 volatile long sec=0;
 
 volatile int tempo_flag=FALSE;
@@ -30,7 +31,7 @@ void int_timera(void){
 	if(++count >= 1){
 	      count=0;
 	      sec_flag = TRUE;
-	      sec=sec+1;               /* secは，1秒ごとにインクリメントされる*/
+        if(stop_flag==FALSE) sec++;               /* secは，1秒ごとにインクリメントされる*/
 	}
 
 #ifdef DEBUG
@@ -437,8 +438,13 @@ void do_mode3(UI_DATA* ud){
     case KEY_SHORT_D:
     sec=(volatile long)0;
     break;
+  case KEY_SHORT_L:
+    if(stop_flag==FALSE){
+      stop_flag=TRUE;
+    }else{
+      stop_flag=FALSE;
+    }
   }
-
 }
 
 void show_dentaku() {
@@ -479,8 +485,6 @@ void show_dentaku() {
     if(j==3){
       data[11]+=((s1*10/s2)%10);
       data[12]+=((s1*100/s2)%10);
-    }{
-  
     }
   }
 
