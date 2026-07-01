@@ -137,7 +137,19 @@ void timer_init(void) {
 
 /* 適切なモード名を入れることが望ましいが，MODE_0～とする。 */
 /* 美しい書き方をするならば，適切なテーブルを持つ必要がある */
-enum MENU_MODE { MODE_OUT_OF_MIN = -1, MODE_0, MODE_1, MODE_2, MODE_3, MODE_4, MODE_OUT_OF_MAX };
+enum MENU_MODE {
+  MODE_OUT_OF_MIN = -1,
+  MODE_0,
+  MODE_1,
+  MODE_2,
+  MODE_3,
+  MODE_4,
+  MODE_5,
+  MODE_6,
+  MODE_7,
+  MODE_8,
+  MODE_OUT_OF_MAX
+};
 
 // うぅ。下記のKとkの見分け(大文字小文字の見分け)が付かずに，
 // １時間半の痛恨のロス(2011/12/19 00:37 by T.NITTA)
@@ -166,6 +178,10 @@ extern void do_mode1(UI_DATA* ui_data);
 extern void do_mode2(UI_DATA* ui_data);
 extern void do_mode3(UI_DATA* ui_data);
 extern void do_mode4(UI_DATA* ui_data);
+extern void do_mode5(UI_DATA* ui_data);
+extern void do_mode6(UI_DATA* ui_data);
+extern void do_mode7(UI_DATA* ui_data);
+extern void do_mode8(UI_DATA* ui_data);
 
 UI_DATA* ui(char sw) { /* ミーリ型？ムーア型？どっちで実装？良く考えて */
   static UI_DATA ui_data = {
@@ -192,6 +208,18 @@ UI_DATA* ui(char sw) { /* ミーリ型？ムーア型？どっちで実装？良
       break;
     case MODE_4:
       do_mode4(&ui_data);
+      break;
+    case MODE_5:
+      do_mode5(&ui_data);
+      break;
+    case MODE_6:
+      do_mode6(&ui_data);
+      break;
+    case MODE_7:
+      do_mode7(&ui_data);
+      break;
+    case MODE_8:
+      do_mode8(&ui_data);
       break;
     default:
       break;
@@ -538,6 +566,12 @@ void do_mode4(UI_DATA* ud) {
   lcd_putstr(10, 1, "M=");
   lcd_putdec(12, 1, 2, miss);
 }
+
+void do_mode5(UI_DATA* ud) {}
+void do_mode6(UI_DATA* ud) {}
+void do_mode7(UI_DATA* ud) {}
+void do_mode8(UI_DATA* ud) {}
+
 
 int main(void) {
   UI_DATA* ui_data = NULL;
