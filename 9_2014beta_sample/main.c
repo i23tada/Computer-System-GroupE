@@ -4,6 +4,7 @@ volatile int tma_flag=FALSE;
 volatile int sec_flag=FALSE;
 volatile int tmv_flag=FALSE;
 volatile int stop_flag=FALSE;
+volatile int enso_flag=FALSE;
 volatile long sec=0;
 
 volatile int tempo_flag=FALSE;
@@ -28,10 +29,10 @@ void int_timera(void){
 	tma_flag = TRUE;
 	//	EI();         /* 必要に応じて EI()を実行  */
 	/*32回呼び出されたら，if文の中が実行されて，sec_flagが有効になる*/
-	if(++count >= 1){
-	      count=0;
-	      sec_flag = TRUE;
-        if(stop_flag==FALSE) sec++;               /* secは，1秒ごとにインクリメントされる*/
+	if(++count >= 32){
+	    count=0;
+	    sec_flag = TRUE;
+      if(stop_flag==FALSE) sec++;               /* secは，1秒ごとにインクリメントされる*/
 	}
 
 #ifdef DEBUG
@@ -418,7 +419,7 @@ void show_tokei(void){
 }
 
 void do_mode3(UI_DATA* ud){
-  if(ud->prev_mode!=ud->mode || sec_flag==TRUE){
+  if(ud->prev_mode!=ud->mode || sec_flag==TRUE || ud->sw){
     lcd_clear();
     lcd_putstr(0,0,"MODE3:24ｼﾞｶﾝｲﾄｹｲ");
     show_tokei();
@@ -495,10 +496,11 @@ void show_dentaku() {
 }
 
 void do_mode8(UI_DATA* ud){
-  if(ud->prev_mode!=ud->mode || sec_flag==TRUE){
+  if(ud->prev_mode!=ud->mode || sec_flag==TRUE || ud->sw){
     lcd_clear();
     lcd_putstr(0,0,"MODE8:ﾃﾞﾝﾀｸ");
     show_dentaku();
+    sec_flag=FALSE;
   }
 
   switch(ud->sw){
@@ -533,7 +535,6 @@ void do_mode8(UI_DATA* ud){
     break;
   }
 }
-
 
 int main(void){
          UI_DATA* ui_data=NULL;
