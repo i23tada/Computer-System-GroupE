@@ -4,11 +4,11 @@ volatile int tma_flag=FALSE;
 volatile int sec_flag=FALSE;
 volatile int tmv_flag=FALSE;
 volatile int stop_flag=FALSE;
-volatile int enso_flag=FALSE;
 volatile long sec=0;
 
 volatile int tempo_flag=FALSE;
 int tempo_compare=0;
+int time=0;
 int s[5] = {0,0,0,0,0};
 char x[4]={'+','-','*','/'};
 int i=0,j=0;
@@ -415,38 +415,60 @@ void show_tokei(void){
   data[8]='\0';
 
   lcd_putstr(16-8,1,data);
-
-}
+  if(stop_flag==TRUE) {
+    lcd_putstr(0,1,"ｾｯﾃｲ");
+    if(time==0) lcd_putstr(5,1,"h");
+    if(time==1) lcd_putstr(5,1,"m");
+    if(time==2) lcd_putstr(5,1,"s");
+    }
+  }
 
 void do_mode3(UI_DATA* ud){
-  if(ud->prev_mode!=ud->mode || sec_flag==TRUE || ud->sw){
+  if(ud->prev_mode!=ud->mode || sec_flag==TRUE){
     lcd_clear();
     lcd_putstr(0,0,"MODE3:24ｼﾞｶﾝｲﾄｹｲ");
     show_tokei();
     sec_flag=FALSE;
   }
-  
-  switch(ud->sw){  /*モード内でのキー入力別操作*/
-  case KEY_LONG_C:  /* 中央キーの長押し */
-    ud->mode=MODE_0; /* 次は，モード0に戻る */
-    break;
-  case KEY_SHORT_L:
-    sec=(volatile long)sec+3600;
-    break;
-  case KEY_SHORT_U:
-    sec=(volatile long)sec+60;
-    break;
-  case KEY_SHORT_R:
-    sec=(volatile long)sec+1;
-    break;
-  case KEY_LONG_D:
-    sec=(volatile long)0;
-    break;
-  case KEY_SHORT_D:
-    if(stop_flag==FALSE) stop_flag=TRUE;
-    else stop_flag=FALSE;
-    break;
+
+  if(stop_flag == TRUE) {
+    switch(ud->sw){
+    case KEY_LONG_C:
+      ud->mode=MODE_0;
+      break;
+    case KEY_SHORT_U:
+      if(time==0)sec+=3600;
+      if(time==1)sec+=60;
+      if(time==2)sec++;
+      break;
+    case KEY_SHORT_D:
+      if(time==0)sec-=3600;
+      if(time==1)sec-=60;
+      if(time==2)sec--;
+      break;
+    case KEY_SHORT_L:
+      if(time>0)time--;
+      break;
+    case KEY_SHORT_R:
+      if(time<2)time++;
+      break;
+    case KEY_SHORT_C:
+      stop_flag=FALSE;
+    }
   }
+  
+  if(stop_flag==FALSE){
+    switch(ud->sw){  /*モード内でのキー入力別操作*/
+    case KEY_LONG_C:  /* 中央キーの長押し */
+      ud->mode=MODE_0; /* 次は，モード0に戻る */
+      break;
+    case KEY_SHORT_C:
+      stop_flag=TRUE;
+      break;
+    }
+  }
+
+  if(ud->sw) show_tokei();
 }
 
 void show_dentaku() {
@@ -496,7 +518,7 @@ void show_dentaku() {
 }
 
 void do_mode8(UI_DATA* ud){
-  if(ud->prev_mode!=ud->mode || sec_flag==TRUE || ud->sw){
+  if(ud->prev_mode!=ud->mode || sec_flag==TRUE){
     lcd_clear();
     lcd_putstr(0,0,"MODE8:ﾃﾞﾝﾀｸ");
     show_dentaku();
@@ -534,6 +556,8 @@ void do_mode8(UI_DATA* ud){
     }
     break;
   }
+
+  if(ud->sw) show_dentaku();
 }
 
 int main(void){
