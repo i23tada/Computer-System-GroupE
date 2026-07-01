@@ -6,11 +6,12 @@ volatile int tmv_flag  = FALSE;
 volatile int stop_flag = FALSE;
 volatile long sec      = 0;
 
-volatile int tempo_flag = FALSE;
-int tempo_compare       = 0;
-int s[5]                = {0, 0, 0, 0, 0};
-char x[4]               = {'+', '-', '*', '/'};
-int i = 0, j = 0;
+volatile int tempo_flag=FALSE;
+int tempo_compare=0;
+int time=0;
+int s[5] = {0,0,0,0,0};
+char x[4]={'+','-','*','/'};
+int i=0,j=0;
 
 #define DEBUG /* デバッグ中は，定義しておく */
 
@@ -420,60 +421,81 @@ void do_mode2(UI_DATA* ud) {
 
 void show_tokei(void) {
   char data[9];
-  int h, m, s;
-  long sec_hold = sec; /* 値を生成している最中に，secが変わると嫌なので，   */
-                       /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
-                       /* で変化させているので，運が悪いと処理中に変化する。*/
+  int h,m,s;
+  long sec_hold=sec; /* 値を生成している最中に，secが変わると嫌なので，   */
+                    /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
+                    /* で変化させているので，運が悪いと処理中に変化する。*/
 
-  s = sec_hold % 60;
-  m = ((sec_hold / 60) % 60); /* ここで，hの値の健全性は，検証していないからね。*/
-                              /* ヒントは，「secは，int型」*/
-  h = ((sec_hold / 3600) % 24);
+  s=sec_hold % 60;
+  m=((sec_hold / 60)%60); /* ここで，hの値の健全性は，検証していないからね。*/
+                     /* ヒントは，「secは，int型」*/
+  h=((sec_hold / 3600)%24);
 
-  data[0] = '0' + h / 10;
-  data[1] = '0' + h % 10;
-  data[2] = ':';
-  data[3] = '0' + m / 10;
-  data[4] = '0' + m % 10;
-  data[5] = ':';
-  data[6] = '0' + s / 10;
-  data[7] = '0' + s % 10;
-  data[8] = '\0';
+  data[0]='0'+h/10;
+  data[1]='0'+h%10;
+  data[2]=':';
+  data[3]='0'+m/10;
+  data[4]='0'+m%10;
+  data[5]=':';
+  data[6]='0'+s/10;
+  data[7]='0'+s%10;
+  data[8]='\0';
 
-  lcd_putstr(16 - 8, 1, data);
-}
+  lcd_putstr(16-8,1,data);
+  if(stop_flag==TRUE) {
+    lcd_putstr(0,1,"ｾｯﾃｲ");
+    if(time==0) lcd_putstr(5,1,"h");
+    if(time==1) lcd_putstr(5,1,"m");
+    if(time==2) lcd_putstr(5,1,"s");
+    }
+  }
 
 void do_mode3(UI_DATA* ud) {
   if (ud->prev_mode != ud->mode || sec_flag == TRUE) {
     lcd_clear();
     lcd_putstr(0, 0, "MODE3:24ｼﾞｶﾝｲﾄｹｲ");
     show_tokei();
-    sec_flag = FALSE;
+    sec_flag=FALSE;
   }
 
-  switch (ud->sw) {      /*モード内でのキー入力別操作*/
-    case KEY_LONG_C:     /* 中央キーの長押し */
-      ud->mode = MODE_0; /* 次は，モード0に戻る */
-      break;
-    case KEY_SHORT_L:
-      sec = (volatile long)sec + 3600;
+  if(stop_flag == TRUE) {
+    switch(ud->sw){
+    case KEY_LONG_C:
+      ud->mode=MODE_0;
       break;
     case KEY_SHORT_U:
-      sec = (volatile long)sec + 60;
-      break;
-    case KEY_SHORT_R:
-      sec = (volatile long)sec + 1;
-      break;
-    case KEY_LONG_D:
-      sec = (volatile long)0;
+      if(time==0)sec+=3600;
+      if(time==1)sec+=60;
+      if(time==2)sec++;
       break;
     case KEY_SHORT_D:
-      if (stop_flag == FALSE)
-        stop_flag = TRUE;
-      else
-        stop_flag = FALSE;
+      if(time==0)sec-=3600;
+      if(time==1)sec-=60;
+      if(time==2)sec--;
       break;
+    case KEY_SHORT_L:
+      if(time>0)time--;
+      break;
+    case KEY_SHORT_R:
+      if(time<2)time++;
+      break;
+    case KEY_SHORT_C:
+      stop_flag=FALSE;
+    }
   }
+  
+  if(stop_flag==FALSE){
+    switch(ud->sw){  /*モード内でのキー入力別操作*/
+    case KEY_LONG_C:  /* 中央キーの長押し */
+      ud->mode=MODE_0; /* 次は，モード0に戻る */
+      break;
+    case KEY_SHORT_C:
+      stop_flag=TRUE;
+      break;
+    }
+  }
+
+  if(ud->sw) show_tokei();
 }
 
 // ゲームの横と縦の高さ設定
