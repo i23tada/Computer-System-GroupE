@@ -140,6 +140,11 @@ enum MENU_MODE{
   MODE_0,
   MODE_1,
   MODE_2,
+  MODE_3,
+  MODE_4,
+  MODE_5,
+  MODE_6,
+  MODE_7,
   MODE_OUT_OF_MAX
 };
 
@@ -168,6 +173,11 @@ typedef struct _UI_DATA{
 extern void do_mode0(UI_DATA* ui_data);
 extern void do_mode1(UI_DATA* ui_data);
 extern void do_mode2(UI_DATA* ui_data);
+extern void do_mode3(UI_DATA* ui_data);
+extern void do_mode4(UI_DATA* ui_data);
+extern void do_mode5(UI_DATA* ui_data);
+extern void do_mode6(UI_DATA* ui_data);
+extern void do_mode7(UI_DATA* ui_data);
 
 UI_DATA* ui(char sw){ /* ミーリ型？ムーア型？どっちで実装？良く考えて */
   static UI_DATA ui_data={MODE_0,MODE_0,};
@@ -185,6 +195,9 @@ UI_DATA* ui(char sw){ /* ミーリ型？ムーア型？どっちで実装？良�
     break;
   case MODE_2:
     do_mode2(&ui_data);
+    break;
+  case MODE_7:
+    do_mode7(&ui_data);
     break;
   default:
     break;
@@ -374,6 +387,99 @@ void do_mode2(UI_DATA* ud){
   case KEY_LONG_C:   /* 中央キーの長押し */
     ud->mode=MODE_0; /* 次は，モード0に戻る */
     break;
+  }
+}
+
+volatile int pltm_flag;
+static int min,min_kp,sec_tm;
+static char data_tm[6];
+void do_mode7(UI_DATA* ud){
+  if(ud->prev_mode!=ud->mode){
+    pltm_flag = FALSE;
+    sec_tm = 0;
+    min=min_kp=1;
+    data_tm[0] = (min/10==0)? ' ' : '0'+min/10;
+    data_tm[1] = '0' + min%10;
+    data_tm[2] = ':';
+    data_tm[3] = '0' + sec_tm/10;
+    data_tm[4] = '0' + sec_tm%10;
+    data_tm[5] = '\0';
+    lcd_putstr(0,0,"MODE7:ﾀｲﾏﾋｮｳｼﾞ");
+    lcd_putstr(0,1," 1:00");
+  }
+  if(sec_flag==TRUE){
+    if(pltm_flag==TRUE){
+      if (sec_tm <= 0) {
+        sec_tm = 59;
+        min -=1;
+      }
+      else{
+        sec_tm -=1;
+      }
+      data_tm[0] = (min/10==0)? ' ' :'0'+min/10;
+      data_tm[1] = '0' + min%10;
+      data_tm[2] = ':';
+      data_tm[3] = '0' + sec_tm/10;
+      data_tm[4] = '0' + sec_tm%10;
+      data_tm[5] = '\0';
+      lcd_putstr(0,1,data_tm);
+      if((min==0)&&(sec_tm==0)){
+        pltm_flag=FALSE;
+        snd_play("^AA_");
+        min=min_kp;
+        sec_tm=0;
+        data_tm[0] = (min/10==0)? ' ' :'0'+min/10;
+        data_tm[1] = '0' + min%10;
+        data_tm[2] = ':';
+        data_tm[3] = '0' + sec_tm/10;
+        data_tm[4] = '0' + sec_tm%10;
+        data_tm[5] = '\0';
+        lcd_putstr(0,1,data_tm);
+      }
+    }
+    sec_flag=FALSE;
+  }
+  switch(ud->sw){    /*モード内でのキー入力別操作*/
+  case KEY_LONG_C:   /* 中央キーの長押し */
+    ud->mode=MODE_0; /* 次は，モード0に戻る */
+    break;
+  case KEY_SHORT_U:
+    if(pltm_flag == FALSE){
+      min++;
+      if(min >= 100){
+        min=1;
+      }
+      lcd_putdec(0,1,2,min);
+    }
+    break;
+  case KEY_SHORT_D:
+    if(pltm_flag == FALSE){
+      min--;
+      if(min <= 0){
+        min=99;
+      }
+      lcd_putdec(0,1,2,min);
+    }
+    break;
+  case KEY_SHORT_L:
+    if(pltm_flag == FALSE){
+      min_kp=min;
+      pltm_flag = TRUE;
+    }
+    break;
+  case KEY_SHORT_R:
+    if(pltm_flag==TRUE){
+      pltm_flag=FALSE;
+      min=min_kp;
+      sec_tm=0;
+      data_tm[0] = (min/10==0)? ' ' :'0'+min/10;
+      data_tm[1] = '0' + min%10;
+      data_tm[2] = ':';
+      data_tm[3] = '0' + sec_tm/10;
+      data_tm[4] = '0' + sec_tm%10;
+      data_tm[5] = '\0';
+      lcd_putstr(0,1,data_tm);
+    }
   }
 }
 
