@@ -10,6 +10,14 @@ int tempo_compare=0;
 
 #define DEBUG          /* デバッグ中は，定義しておく */
 
+unsigned long int seed;
+
+unsigned long int getrand(void)
+{
+  seed=(48271L*seed) & 0x7fffffff;
+  return(seed);
+}
+
 static unsigned int matrix_led_pattern[8]=
   //{0x007e,0x0011,0x0011,0x0011,0x007e,0x7f00,0x4900,0x4900};
 {0x7e7e,0x1111,0x1111,0x0011,0x007e,0x7f00,0x4900,0x4900};
@@ -140,6 +148,11 @@ enum MENU_MODE{
   MODE_0,
   MODE_1,
   MODE_2,
+  MODE_3,
+  MODE_4,
+  MODE_5,
+  MODE_6,
+  MODE_7,
   MODE_OUT_OF_MAX
 };
 
@@ -168,6 +181,11 @@ typedef struct _UI_DATA{
 extern void do_mode0(UI_DATA* ui_data);
 extern void do_mode1(UI_DATA* ui_data);
 extern void do_mode2(UI_DATA* ui_data);
+extern void do_mode3(UI_DATA* ui_data);
+extern void do_mode4(UI_DATA* ui_data);
+extern void do_mode5(UI_DATA* ui_data);
+extern void do_mode6(UI_DATA* ui_data);
+extern void do_mode7(UI_DATA* ui_data);
 
 UI_DATA* ui(char sw){ /* ミーリ型？ムーア型？どっちで実装？良く考えて */
   static UI_DATA ui_data={MODE_0,MODE_0,};
@@ -185,6 +203,21 @@ UI_DATA* ui(char sw){ /* ミーリ型？ムーア型？どっちで実装？良�
     break;
   case MODE_2:
     do_mode2(&ui_data);
+    break;
+  case MODE_3:
+    do_mode3(&ui_data);
+    break;
+  case MODE_4:
+    do_mode4(&ui_data);
+    break;
+  case MODE_5:
+    do_mode5(&ui_data);
+    break;
+  case MODE_6:
+    do_mode6(&ui_data);
+    break;
+  case MODE_7:
+    do_mode7(&ui_data);
     break;
   default:
     break;
@@ -377,7 +410,118 @@ void do_mode2(UI_DATA* ud){
   }
 }
 
+void do_mode3(UI_DATA* ud){
 
+}
+
+void do_mode4(UI_DATA* ud){
+
+}
+
+void do_mode5(UI_DATA* ud){
+
+}
+
+//Here is my work space!
+void do_mode6(UI_DATA* ud){
+    static char stage[2][16] = {{0}}; 
+    static int player_y = 0;          
+    static int timing = 0;
+    static int material_flag = 0;
+    int temp = 3; // 速度3
+    int i, j;
+    static unsigned int shuffle_counter = 0;
+
+    // 初めてこのモードに入った時だけ初期化する
+    if(ud->prev_mode != ud->mode) {
+        lcd_clear();
+        
+        // 配列全体を半角スペースで埋める
+        for(i = 0; i < 2; i++) {
+            for(j = 0; j < 16; j++) {
+                stage[i][j] = ' '; 
+            }
+        }
+        timing = 0;
+        material_flag = 0;
+        
+        // グローバル変数のseedを「奇数」で1回だけ初期化する
+        seed = 12345; 
+    }
+
+    // 1. キー入力の更新
+    switch(ud->sw){
+        case KEY_SHORT_U: player_y = 0; break;
+        case KEY_SHORT_D: player_y = 1; break;
+        case KEY_LONG_C:  ud->mode = MODE_0; return;
+    }
+
+    // 2. 時間のカウント（元の形に戻す・フラグは折らない）
+    if(tmv_flag == TRUE) { 
+        timing++;
+    }
+
+    shuffle_counter++;
+
+    // 3. 一定時間（temp）ごとに障害物を動かす処理
+    // timingがtemp以上になったら実行する
+    if(timing >= temp){ 
+        timing = 0; 
+
+        // stage配列の文字を左にずらす処理
+        for(i = 0; i <= 1; i++){
+            for(j = 0; j < 15; j++) {
+                stage[i][j] = stage[i][j+1]; 
+            }
+            stage[i][15] = ' '; 
+        }
+        
+        // 障害物の生成
+        if (material_flag == 0) {
+            int y = shuffle_counter & 1; 
+            stage[y][15] = '*'; 
+            
+            // 出現間隔決定
+            material_flag = (shuffle_counter % 3) + 1; 
+        } else {
+            material_flag--;
+        }
+    }
+
+    if (stage[player_y][0] == '*') {
+        // 1. 液晶をクリアしてゲームオーバー画面を出す
+        lcd_clear();
+        lcd_putstr(4, 0, "GAME OVER"); // 中央寄りに表示
+        
+        volatile long int delay;
+        for(delay = 0; delay < 500000; delay++); 
+
+        // 2. モードをタイトル画面（MODE_0）に戻す
+        ud->mode = MODE_0;
+        return; // 関数を抜ける
+    }
+
+    // 4. 画面の再描画（毎回実行）
+    for(i = 0; i <= 1; i++) {
+        for(j = 0; j < 16; j++) {
+            if(j == 0 && i == player_y) {
+                lcd_putstr(0, i, ">"); 
+            } else {
+                // 自機がいないマスは、配列の中身（'*' か ' '）をそのまま描画する
+                if(stage[i][j] == '*' ) {
+                    lcd_putstr(j, i, "*"); 
+                } else {
+                    lcd_putstr(j, i, " "); 
+                }
+            }
+        }
+    }
+}
+
+
+void do_mode7(UI_DATA* ud){
+
+}
 
 int main(void){
          UI_DATA* ui_data=NULL;
