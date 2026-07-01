@@ -1,12 +1,16 @@
 #include "libs.h" /* 前のmy3664hの内容は，libs/libs.hへ統合した */
 
-volatile int tma_flag = FALSE;
-volatile int sec_flag = FALSE;
-volatile int tmv_flag = FALSE;
-volatile int sec      = 0;
+volatile int tma_flag=FALSE;
+volatile int sec_flag=FALSE;
+volatile int tmv_flag=FALSE;
+volatile int stop_flag=FALSE;
+volatile long sec=0;
 
-volatile int tempo_flag = FALSE;
-int tempo_compare       = 0;
+volatile int tempo_flag=FALSE;
+int tempo_compare=0;
+int s[5] = {0,0,0,0,0};
+char x[4]={'+','-','*','/'};
+int i=0,j=0;
 
 #define DEBUG /* デバッグ中は，定義しておく */
 
@@ -370,23 +374,23 @@ void do_mode1(UI_DATA* ud) {
 /*時計表示のアルゴリズムの一部*/
 void show_sec(void) {
   char data[6];
-  int h, s;
-  int sec_hold = sec; /* 値を生成している最中に，secが変わると嫌なので，   */
-                      /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
-                      /* で変化させているので，運が悪いと処理中に変化する。*/
+  int h,s;
+  long sec_hold=sec; /* 値を生成している最中に，secが変わると嫌なので，   */
+                    /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
+                    /* で変化させているので，運が悪いと処理中に変化する。*/
 
-  s = sec_hold % 60;
-  h = (sec_hold / 60); /* ここで，hの値の健全性は，検証していないからね。*/
-                       /* ヒントは，「secは，int型」*/
+  s=sec_hold % 60;
+  h=(sec_hold / 60); /* ここで，hの値の健全性は，検証していないからね。*/
+                     /* ヒントは，「secは，int型」*/
 
-  data[0] = '0' + h / 10;
-  data[1] = '0' + h % 10;
-  data[2] = ':';
-  data[3] = '0' + s / 10;
-  data[4] = '0' + s % 10;
-  data[5] = '\0';
+  data[0]='0'+h/10;
+  data[1]='0'+h%10;
+  data[2]=':';
+  data[3]='0'+ s/10;
+  data[4]='0'+ s%10;
+  data[5]='\0';
 
-  lcd_putstr(16 - 5, 1, data);
+  lcd_putstr(16-5,1,data);
 }
 
 void do_mode2(UI_DATA* ud) {
@@ -421,6 +425,148 @@ static void matrix_clear_all(void) {
   }
 }
 
+void show_tokei(void){
+  char data[9];
+  int h,m,s;
+  long sec_hold=sec; /* 値を生成している最中に，secが変わると嫌なので，   */
+                    /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
+                    /* で変化させているので，運が悪いと処理中に変化する。*/
+
+  s=sec_hold % 60;
+  m=((sec_hold / 60)%60); /* ここで，hの値の健全性は，検証していないからね。*/
+                     /* ヒントは，「secは，int型」*/
+  h=((sec_hold / 3600)%24);
+
+  data[0]='0'+h/10;
+  data[1]='0'+h%10;
+  data[2]=':';
+  data[3]='0'+m/10;
+  data[4]='0'+m%10;
+  data[5]=':';
+  data[6]='0'+s/10;
+  data[7]='0'+s%10;
+  data[8]='\0';
+
+  lcd_putstr(16-8,1,data);
+
+}
+
+void do_mode3(UI_DATA* ud){
+  if(ud->prev_mode!=ud->mode || sec_flag==TRUE){
+    lcd_clear();
+    lcd_putstr(0,0,"MODE3:24ｼﾞｶﾝｲﾄｹｲ");
+    show_tokei();
+    sec_flag=FALSE;
+  }
+  
+  switch(ud->sw){  /*モード内でのキー入力別操作*/
+  case KEY_LONG_C:  /* 中央キーの長押し */
+    ud->mode=MODE_0; /* 次は，モード0に戻る */
+    break;
+  case KEY_SHORT_L:
+    sec=(volatile long)sec+3600;
+    break;
+  case KEY_SHORT_U:
+    sec=(volatile long)sec+60;
+    break;
+  case KEY_SHORT_R:
+    sec=(volatile long)sec+1;
+    break;
+  case KEY_LONG_D:
+    sec=(volatile long)0;
+    break;
+  case KEY_SHORT_D:
+    if(stop_flag==FALSE) stop_flag=TRUE;
+    else stop_flag=FALSE;
+    break;
+  }
+}
+
+void show_dentaku() {
+  int s1=(unsigned)(s[0]*10+s[1]);
+  int s2=(unsigned)(s[3]*10+s[4]);
+  unsigned int kekka=0;
+  char data[14];
+  data[0]='0'+s[0];
+  data[1]='0'+s[1];
+  data[2]=x[j];
+  data[3]='0'+s[3];
+  data[4]='0'+s[4];
+  data[5]='=';
+
+  if(s2==0&&j==3){
+    data[6]='!';
+    data[7]='!';
+    data[8]='!';
+    data[9]='!';
+    data[10]='!';
+    data[11]='!';
+    data[12]='!';
+  }else{
+    if(j==0) kekka=s1+s2;
+    if(j==1) kekka=abs(s1-s2);
+    if(j==2) kekka=s1*s2;
+    if(j==3) kekka=s1/s2;
+
+    data[6]='0'+((kekka/1000)%10);
+    if(s1-s2<0&&j==1) data[6]='-';
+    data[7]='0'+((kekka/100)%10);
+    data[8]='0'+((kekka/10)%10);
+    data[9]='0'+(kekka%10);
+
+    data[10]='.';
+    data[11]='0';
+    data[12]='0';
+    if(j==3){
+      data[11]+=((s1*10/s2)%10);
+      data[12]+=((s1*100/s2)%10);
+    }
+  }
+
+  data[13]='\0';
+
+  lcd_putstr(0,1,data);
+}
+
+void do_mode8(UI_DATA* ud){
+  if(ud->prev_mode!=ud->mode || sec_flag==TRUE){
+    lcd_clear();
+    lcd_putstr(0,0,"MODE8:ﾃﾞﾝﾀｸ");
+    show_dentaku();
+  }
+
+  switch(ud->sw){
+  case KEY_LONG_C:
+    ud->mode=MODE_0;
+    break;
+  case KEY_SHORT_R:
+  if(i<4) i++;
+    break;
+  case KEY_SHORT_L:
+  if(i>0) i--;
+    break;
+  case KEY_SHORT_U:
+    if(i==2){
+      if(j<3) j++;
+      else j=0;
+    }
+    else {
+      if(s[i]<9) s[i]++;
+      else s[i]=0;
+    }
+    break;
+  case KEY_SHORT_D:
+    if(i==2){
+      if(j>0) j--;
+      else j=3;
+    }
+    else{
+      if(s[i]>0) s[i]--;
+      else s[i]=9;
+    }
+    break;
+  }
+}
 // 任意の(x,y)のLEDを点灯
 static void matrix_set_dot(int x, int y) {
   // 変な値を弾く処理
@@ -570,7 +716,6 @@ void do_mode4(UI_DATA* ud) {
 void do_mode5(UI_DATA* ud) {}
 void do_mode6(UI_DATA* ud) {}
 void do_mode7(UI_DATA* ud) {}
-void do_mode8(UI_DATA* ud) {}
 
 
 int main(void) {
