@@ -1,14 +1,25 @@
 #include "libs.h" /* 前のmy3664hの内容は，libs/libs.hへ統合した */
 
-volatile int tma_flag = FALSE;
-volatile int sec_flag = FALSE;
-volatile int tmv_flag = FALSE;
-volatile int sec      = 0;
+volatile int tma_flag  = FALSE;
+volatile int sec_flag  = FALSE;
+volatile int tmv_flag  = FALSE;
+volatile int stop_flag = FALSE;
+volatile long sec      = 0;
 
 volatile int tempo_flag = FALSE;
 int tempo_compare       = 0;
+int s[5]                = {0, 0, 0, 0, 0};
+char x[4]               = {'+', '-', '*', '/'};
+int i = 0, j = 0;
 
 #define DEBUG /* デバッグ中は，定義しておく */
+
+unsigned long int seed;
+
+unsigned long int getrand(void) {
+  seed = (48271L * seed) & 0x7fffffff;
+  return (seed);
+}
 
 static unsigned int matrix_led_pattern[8] =
     //{0x007e,0x0011,0x0011,0x0011,0x007e,0x7f00,0x4900,0x4900};
@@ -371,9 +382,9 @@ void do_mode1(UI_DATA* ud) {
 void show_sec(void) {
   char data[6];
   int h, s;
-  int sec_hold = sec; /* 値を生成している最中に，secが変わると嫌なので，   */
-                      /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
-                      /* で変化させているので，運が悪いと処理中に変化する。*/
+  long sec_hold = sec; /* 値を生成している最中に，secが変わると嫌なので，   */
+                       /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
+                       /* で変化させているので，運が悪いと処理中に変化する。*/
 
   s = sec_hold % 60;
   h = (sec_hold / 60); /* ここで，hの値の健全性は，検証していないからね。*/
@@ -407,7 +418,63 @@ void do_mode2(UI_DATA* ud) {
   }
 }
 
-void do_mode3(UI_DATA* ud) {}
+void show_tokei(void) {
+  char data[9];
+  int h, m, s;
+  long sec_hold = sec; /* 値を生成している最中に，secが変わると嫌なので，   */
+                       /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
+                       /* で変化させているので，運が悪いと処理中に変化する。*/
+
+  s = sec_hold % 60;
+  m = ((sec_hold / 60) % 60); /* ここで，hの値の健全性は，検証していないからね。*/
+                              /* ヒントは，「secは，int型」*/
+  h = ((sec_hold / 3600) % 24);
+
+  data[0] = '0' + h / 10;
+  data[1] = '0' + h % 10;
+  data[2] = ':';
+  data[3] = '0' + m / 10;
+  data[4] = '0' + m % 10;
+  data[5] = ':';
+  data[6] = '0' + s / 10;
+  data[7] = '0' + s % 10;
+  data[8] = '\0';
+
+  lcd_putstr(16 - 8, 1, data);
+}
+
+void do_mode3(UI_DATA* ud) {
+  if (ud->prev_mode != ud->mode || sec_flag == TRUE) {
+    lcd_clear();
+    lcd_putstr(0, 0, "MODE3:24ｼﾞｶﾝｲﾄｹｲ");
+    show_tokei();
+    sec_flag = FALSE;
+  }
+
+  switch (ud->sw) {      /*モード内でのキー入力別操作*/
+    case KEY_LONG_C:     /* 中央キーの長押し */
+      ud->mode = MODE_0; /* 次は，モード0に戻る */
+      break;
+    case KEY_SHORT_L:
+      sec = (volatile long)sec + 3600;
+      break;
+    case KEY_SHORT_U:
+      sec = (volatile long)sec + 60;
+      break;
+    case KEY_SHORT_R:
+      sec = (volatile long)sec + 1;
+      break;
+    case KEY_LONG_D:
+      sec = (volatile long)0;
+      break;
+    case KEY_SHORT_D:
+      if (stop_flag == FALSE)
+        stop_flag = TRUE;
+      else
+        stop_flag = FALSE;
+      break;
+  }
+}
 
 // ゲームの横と縦の高さ設定
 #define GAME_W 8
@@ -568,10 +635,203 @@ void do_mode4(UI_DATA* ud) {
 }
 
 void do_mode5(UI_DATA* ud) {}
-void do_mode6(UI_DATA* ud) {}
-void do_mode7(UI_DATA* ud) {}
-void do_mode8(UI_DATA* ud) {}
 
+// Here is my work space!
+void do_mode6(UI_DATA* ud) {
+  static char stage[2][16] = {{0}};
+  static int player_y      = 0;
+  static int timing        = 0;
+  static int material_flag = 0;
+  int temp                 = 3;  // 速度3
+  int i, j;
+  static unsigned int shuffle_counter = 0;
+
+  // 初めてこのモードに入った時だけ初期化する
+  if (ud->prev_mode != ud->mode) {
+    lcd_clear();
+
+    // 配列全体を半角スペースで埋める
+    for (i = 0; i < 2; i++) {
+      for (j = 0; j < 16; j++) {
+        stage[i][j] = ' ';
+      }
+    }
+    timing        = 0;
+    material_flag = 0;
+
+    // グローバル変数のseedを「奇数」で1回だけ初期化する
+    seed = 12345;
+  }
+
+  // 1. キー入力の更新
+  switch (ud->sw) {
+    case KEY_SHORT_U:
+      player_y = 0;
+      break;
+    case KEY_SHORT_D:
+      player_y = 1;
+      break;
+    case KEY_LONG_C:
+      ud->mode = MODE_0;
+      return;
+  }
+
+  // 2. 時間のカウント（元の形に戻す・フラグは折らない）
+  if (tmv_flag == TRUE) {
+    timing++;
+  }
+
+  shuffle_counter++;
+
+  // 3. 一定時間（temp）ごとに障害物を動かす処理
+  // timingがtemp以上になったら実行する
+  if (timing >= temp) {
+    timing = 0;
+
+    // stage配列の文字を左にずらす処理
+    for (i = 0; i <= 1; i++) {
+      for (j = 0; j < 15; j++) {
+        stage[i][j] = stage[i][j + 1];
+      }
+      stage[i][15] = ' ';
+    }
+
+    // 障害物の生成
+    if (material_flag == 0) {
+      int y        = shuffle_counter & 1;
+      stage[y][15] = '*';
+
+      // 出現間隔決定
+      material_flag = (shuffle_counter % 3) + 1;
+    } else {
+      material_flag--;
+    }
+  }
+
+  if (stage[player_y][0] == '*') {
+    // 1. 液晶をクリアしてゲームオーバー画面を出す
+    lcd_clear();
+    lcd_putstr(4, 0, "GAME OVER");  // 中央寄りに表示
+
+    volatile long int delay;
+    for (delay = 0; delay < 500000; delay++);
+
+    // 2. モードをタイトル画面（MODE_0）に戻す
+    ud->mode = MODE_0;
+    return;  // 関数を抜ける
+  }
+
+  // 4. 画面の再描画（毎回実行）
+  for (i = 0; i <= 1; i++) {
+    for (j = 0; j < 16; j++) {
+      if (j == 0 && i == player_y) {
+        lcd_putstr(0, i, ">");
+      } else {
+        // 自機がいないマスは、配列の中身（'*' か ' '）をそのまま描画する
+        if (stage[i][j] == '*') {
+          lcd_putstr(j, i, "*");
+        } else {
+          lcd_putstr(j, i, " ");
+        }
+      }
+    }
+  }
+}
+
+
+void do_mode7(UI_DATA* ud) {}
+
+void show_dentaku() {
+  int s1             = (unsigned)(s[0] * 10 + s[1]);
+  int s2             = (unsigned)(s[3] * 10 + s[4]);
+  unsigned int kekka = 0;
+  char data[14];
+  data[0] = '0' + s[0];
+  data[1] = '0' + s[1];
+  data[2] = x[j];
+  data[3] = '0' + s[3];
+  data[4] = '0' + s[4];
+  data[5] = '=';
+
+  if (s2 == 0 && j == 3) {
+    data[6]  = '!';
+    data[7]  = '!';
+    data[8]  = '!';
+    data[9]  = '!';
+    data[10] = '!';
+    data[11] = '!';
+    data[12] = '!';
+  } else {
+    if (j == 0) kekka = s1 + s2;
+    if (j == 1) kekka = abs(s1 - s2);
+    if (j == 2) kekka = s1 * s2;
+    if (j == 3) kekka = s1 / s2;
+
+    data[6] = '0' + ((kekka / 1000) % 10);
+    if (s1 - s2 < 0 && j == 1) data[6] = '-';
+    data[7] = '0' + ((kekka / 100) % 10);
+    data[8] = '0' + ((kekka / 10) % 10);
+    data[9] = '0' + (kekka % 10);
+
+    data[10] = '.';
+    data[11] = '0';
+    data[12] = '0';
+    if (j == 3) {
+      data[11] += ((s1 * 10 / s2) % 10);
+      data[12] += ((s1 * 100 / s2) % 10);
+    }
+  }
+
+  data[13] = '\0';
+
+  lcd_putstr(0, 1, data);
+}
+
+void do_mode8(UI_DATA* ud) {
+  if (ud->prev_mode != ud->mode || sec_flag == TRUE) {
+    lcd_clear();
+    lcd_putstr(0, 0, "MODE8:ﾃﾞﾝﾀｸ");
+    show_dentaku();
+  }
+
+  switch (ud->sw) {
+    case KEY_LONG_C:
+      ud->mode = MODE_0;
+      break;
+    case KEY_SHORT_R:
+      if (i < 4) i++;
+      break;
+    case KEY_SHORT_L:
+      if (i > 0) i--;
+      break;
+    case KEY_SHORT_U:
+      if (i == 2) {
+        if (j < 3)
+          j++;
+        else
+          j = 0;
+      } else {
+        if (s[i] < 9)
+          s[i]++;
+        else
+          s[i] = 0;
+      }
+      break;
+    case KEY_SHORT_D:
+      if (i == 2) {
+        if (j > 0)
+          j--;
+        else
+          j = 3;
+      } else {
+        if (s[i] > 0)
+          s[i]--;
+        else
+          s[i] = 9;
+      }
+      break;
+  }
+}
 
 int main(void) {
   UI_DATA* ui_data = NULL;
