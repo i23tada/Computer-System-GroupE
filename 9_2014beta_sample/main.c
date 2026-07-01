@@ -11,7 +11,7 @@ int tempo_compare       = 0;
 int time                = 0;
 int s[5]                = {0, 0, 0, 0, 0};
 char x[4]               = {'+', '-', '*', '/'};
-int i = 0, j = 0;
+int i = 0, j = 0, k;
 
 #define DEBUG /* デバッグ中は，定義しておく */
 
@@ -39,7 +39,7 @@ void int_timera(void) {
   if (++count >= 32) {
     count    = 0;
     sec_flag = TRUE;
-    sec++; /* secは，1秒ごとにインクリメントされる*/
+    if (stop_flag == FALSE) sec++; /* secは，1秒ごとにインクリメントされる*/
   }
 
 #ifdef DEBUG
@@ -458,30 +458,46 @@ void do_mode3(UI_DATA* ud) {
     sec_flag = FALSE;
   }
 
-  if (stop_flag == TRUE) {
-    switch (ud->sw) {
-      case KEY_LONG_C:
-        ud->mode = MODE_0;
-        break;
-      case KEY_SHORT_U:
+  switch (ud->sw) {
+    case KEY_LONG_C:
+      ud->mode = MODE_0;
+      break;
+    case KEY_SHORT_U:
+      if (stop_flag == TRUE) {
         if (time == 0) sec += 3600;
         if (time == 1) sec += 60;
         if (time == 2) sec++;
-        break;
-      case KEY_SHORT_D:
+      }
+      break;
+    case KEY_SHORT_D:
+      if (stop_flag == TRUE) {
         if (time == 0) sec -= 3600;
         if (time == 1) sec -= 60;
         if (time == 2) sec--;
-        break;
-      case KEY_SHORT_L:
+        if (sec < 0) {
+          for (k = 0; k < 24; k++) sec += 3600;
+        }
+      }
+      break;
+    case KEY_LONG_D:
+      if (stop_flag == TRUE) sec = 0;
+      break;
+    case KEY_SHORT_L:
+      if (stop_flag == TRUE) {
         if (time > 0) time--;
-        break;
-      case KEY_SHORT_R:
+      }
+      break;
+    case KEY_SHORT_R:
+      if (stop_flag == TRUE) {
         if (time < 2) time++;
-        break;
-      case KEY_SHORT_C:
+      }
+      break;
+    case KEY_SHORT_C:
+      if (stop_flag == TRUE)
         stop_flag = FALSE;
-    }
+      else
+        stop_flag = TRUE;
+      break;
   }
 
   if (stop_flag == FALSE) {
