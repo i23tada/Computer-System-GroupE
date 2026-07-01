@@ -6,12 +6,12 @@ volatile int tmv_flag  = FALSE;
 volatile int stop_flag = FALSE;
 volatile long sec      = 0;
 
-volatile int tempo_flag=FALSE;
-int tempo_compare=0;
-int time=0;
-int s[5] = {0,0,0,0,0};
-char x[4]={'+','-','*','/'};
-int i=0,j=0;
+volatile int tempo_flag = FALSE;
+int tempo_compare       = 0;
+int time                = 0;
+int s[5]                = {0, 0, 0, 0, 0};
+char x[4]               = {'+', '-', '*', '/'};
+int i = 0, j = 0;
 
 #define DEBUG /* デバッグ中は，定義しておく */
 
@@ -421,81 +421,81 @@ void do_mode2(UI_DATA* ud) {
 
 void show_tokei(void) {
   char data[9];
-  int h,m,s;
-  long sec_hold=sec; /* 値を生成している最中に，secが変わると嫌なので，   */
-                    /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
-                    /* で変化させているので，運が悪いと処理中に変化する。*/
+  int h, m, s;
+  long sec_hold = sec; /* 値を生成している最中に，secが変わると嫌なので，   */
+                       /* ここで，secの値を捕まえる。secの値は，ボトムハーフ*/
+                       /* で変化させているので，運が悪いと処理中に変化する。*/
 
-  s=sec_hold % 60;
-  m=((sec_hold / 60)%60); /* ここで，hの値の健全性は，検証していないからね。*/
-                     /* ヒントは，「secは，int型」*/
-  h=((sec_hold / 3600)%24);
+  s = sec_hold % 60;
+  m = ((sec_hold / 60) % 60); /* ここで，hの値の健全性は，検証していないからね。*/
+                              /* ヒントは，「secは，int型」*/
+  h = ((sec_hold / 3600) % 24);
 
-  data[0]='0'+h/10;
-  data[1]='0'+h%10;
-  data[2]=':';
-  data[3]='0'+m/10;
-  data[4]='0'+m%10;
-  data[5]=':';
-  data[6]='0'+s/10;
-  data[7]='0'+s%10;
-  data[8]='\0';
+  data[0] = '0' + h / 10;
+  data[1] = '0' + h % 10;
+  data[2] = ':';
+  data[3] = '0' + m / 10;
+  data[4] = '0' + m % 10;
+  data[5] = ':';
+  data[6] = '0' + s / 10;
+  data[7] = '0' + s % 10;
+  data[8] = '\0';
 
-  lcd_putstr(16-8,1,data);
-  if(stop_flag==TRUE) {
-    lcd_putstr(0,1,"ｾｯﾃｲ");
-    if(time==0) lcd_putstr(5,1,"h");
-    if(time==1) lcd_putstr(5,1,"m");
-    if(time==2) lcd_putstr(5,1,"s");
-    }
+  lcd_putstr(16 - 8, 1, data);
+  if (stop_flag == TRUE) {
+    lcd_putstr(0, 1, "ｾｯﾃｲ");
+    if (time == 0) lcd_putstr(5, 1, "h");
+    if (time == 1) lcd_putstr(5, 1, "m");
+    if (time == 2) lcd_putstr(5, 1, "s");
   }
+}
 
 void do_mode3(UI_DATA* ud) {
   if (ud->prev_mode != ud->mode || sec_flag == TRUE) {
     lcd_clear();
     lcd_putstr(0, 0, "MODE3:24ｼﾞｶﾝｲﾄｹｲ");
     show_tokei();
-    sec_flag=FALSE;
+    sec_flag = FALSE;
   }
 
-  if(stop_flag == TRUE) {
-    switch(ud->sw){
-    case KEY_LONG_C:
-      ud->mode=MODE_0;
-      break;
-    case KEY_SHORT_U:
-      if(time==0)sec+=3600;
-      if(time==1)sec+=60;
-      if(time==2)sec++;
-      break;
-    case KEY_SHORT_D:
-      if(time==0)sec-=3600;
-      if(time==1)sec-=60;
-      if(time==2)sec--;
-      break;
-    case KEY_SHORT_L:
-      if(time>0)time--;
-      break;
-    case KEY_SHORT_R:
-      if(time<2)time++;
-      break;
-    case KEY_SHORT_C:
-      stop_flag=FALSE;
-    }
-  }
-  
-  if(stop_flag==FALSE){
-    switch(ud->sw){  /*モード内でのキー入力別操作*/
-    case KEY_LONG_C:  /* 中央キーの長押し */
-      ud->mode=MODE_0; /* 次は，モード0に戻る */
-      break;
-    case KEY_SHORT_C:
-      stop_flag=TRUE;
-      break;
+  if (stop_flag == TRUE) {
+    switch (ud->sw) {
+      case KEY_LONG_C:
+        ud->mode = MODE_0;
+        break;
+      case KEY_SHORT_U:
+        if (time == 0) sec += 3600;
+        if (time == 1) sec += 60;
+        if (time == 2) sec++;
+        break;
+      case KEY_SHORT_D:
+        if (time == 0) sec -= 3600;
+        if (time == 1) sec -= 60;
+        if (time == 2) sec--;
+        break;
+      case KEY_SHORT_L:
+        if (time > 0) time--;
+        break;
+      case KEY_SHORT_R:
+        if (time < 2) time++;
+        break;
+      case KEY_SHORT_C:
+        stop_flag = FALSE;
     }
   }
 
-  if(ud->sw) show_tokei();
+  if (stop_flag == FALSE) {
+    switch (ud->sw) {      /*モード内でのキー入力別操作*/
+      case KEY_LONG_C:     /* 中央キーの長押し */
+        ud->mode = MODE_0; /* 次は，モード0に戻る */
+        break;
+      case KEY_SHORT_C:
+        stop_flag = TRUE;
+        break;
+    }
+  }
+
+  if (ud->sw) show_tokei();
 }
 
 // ゲームの横と縦の高さ設定
@@ -760,8 +760,97 @@ void do_mode6(UI_DATA* ud) {
   }
 }
 
-
-void do_mode7(UI_DATA* ud) {}
+volatile int pltm_flag;
+static int min, min_kp, sec_tm;
+static char data_tm[6];
+void do_mode7(UI_DATA* ud) {
+  if (ud->prev_mode != ud->mode) {
+    pltm_flag = FALSE;
+    sec_tm    = 0;
+    min = min_kp = 1;
+    data_tm[0]   = (min / 10 == 0) ? ' ' : '0' + min / 10;
+    data_tm[1]   = '0' + min % 10;
+    data_tm[2]   = ':';
+    data_tm[3]   = '0' + sec_tm / 10;
+    data_tm[4]   = '0' + sec_tm % 10;
+    data_tm[5]   = '\0';
+    lcd_putstr(0, 0, "MODE7:ﾀｲﾏﾋｮｳｼﾞ");
+    lcd_putstr(0, 1, " 1:00");
+  }
+  if (sec_flag == TRUE) {
+    if (pltm_flag == TRUE) {
+      if (sec_tm <= 0) {
+        sec_tm = 59;
+        min -= 1;
+      } else {
+        sec_tm -= 1;
+      }
+      data_tm[0] = (min / 10 == 0) ? ' ' : '0' + min / 10;
+      data_tm[1] = '0' + min % 10;
+      data_tm[2] = ':';
+      data_tm[3] = '0' + sec_tm / 10;
+      data_tm[4] = '0' + sec_tm % 10;
+      data_tm[5] = '\0';
+      lcd_putstr(0, 1, data_tm);
+      if ((min == 0) && (sec_tm == 0)) {
+        pltm_flag = FALSE;
+        snd_play("^AA_");
+        min        = min_kp;
+        sec_tm     = 0;
+        data_tm[0] = (min / 10 == 0) ? ' ' : '0' + min / 10;
+        data_tm[1] = '0' + min % 10;
+        data_tm[2] = ':';
+        data_tm[3] = '0' + sec_tm / 10;
+        data_tm[4] = '0' + sec_tm % 10;
+        data_tm[5] = '\0';
+        lcd_putstr(0, 1, data_tm);
+      }
+    }
+    sec_flag = FALSE;
+  }
+  switch (ud->sw) {      /*モード内でのキー入力別操作*/
+    case KEY_LONG_C:     /* 中央キーの長押し */
+      ud->mode = MODE_0; /* 次は，モード0に戻る */
+      break;
+    case KEY_SHORT_U:
+      if (pltm_flag == FALSE) {
+        min++;
+        if (min >= 100) {
+          min = 1;
+        }
+        lcd_putdec(0, 1, 2, min);
+      }
+      break;
+    case KEY_SHORT_D:
+      if (pltm_flag == FALSE) {
+        min--;
+        if (min <= 0) {
+          min = 99;
+        }
+        lcd_putdec(0, 1, 2, min);
+      }
+      break;
+    case KEY_SHORT_L:
+      if (pltm_flag == FALSE) {
+        min_kp    = min;
+        pltm_flag = TRUE;
+      }
+      break;
+    case KEY_SHORT_R:
+      if (pltm_flag == TRUE) {
+        pltm_flag  = FALSE;
+        min        = min_kp;
+        sec_tm     = 0;
+        data_tm[0] = (min / 10 == 0) ? ' ' : '0' + min / 10;
+        data_tm[1] = '0' + min % 10;
+        data_tm[2] = ':';
+        data_tm[3] = '0' + sec_tm / 10;
+        data_tm[4] = '0' + sec_tm % 10;
+        data_tm[5] = '\0';
+        lcd_putstr(0, 1, data_tm);
+      }
+  }
+}
 
 void show_dentaku() {
   int s1             = (unsigned)(s[0] * 10 + s[1]);
