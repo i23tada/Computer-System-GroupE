@@ -381,23 +381,6 @@ void do_mode2(UI_DATA* ud) {
 
 void do_mode3(UI_DATA* ud) {}
 
-// 計算やる部分(a,bに数、opに演算子)
-int calc(int a, int b, char op) {
-  switch (op) {
-    case '+':
-      return a + b;
-
-    case '-':
-      return a - b;
-
-    case '*':
-      return a * b;
-
-    default:
-      return 0;
-  }
-}
-
 // ゲームの横と縦の高さ設定
 #define GAME_W 8
 #define GAME_H 8
