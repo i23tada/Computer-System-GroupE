@@ -526,9 +526,11 @@ void do_mode3(UI_DATA* ud) {
   if (ud->sw) show_tokei();
 }
 
-// ゲームの横と縦の高さ設定
+// ゲームの縦横、落下するLEDの数、ライフの最大値を定義
 #define GAME_W 8
 #define GAME_H 8
+#define FALL_NUM 3
+#define LIFE_MAX 3
 
 // LEDを全て消す
 static void matrix_clear_all(void) {
@@ -548,17 +550,26 @@ static void matrix_set_dot(int x, int y) {
   matrix_led_pattern[x] |= (0x8000 >> y);
 }
 
+// 0〜7っぽい値を作る簡易乱数
+static int simple_rand8(void) {
+  static int r = 1;
+  r            = (r * 5 + 3) & 0x07;
+  return r;
+}
+
 // LEDキャッチゲーム
 void do_mode4(UI_DATA* ud) {
   static int player_x;
-  static int fall_x;
-  static int fall_y;
+  static int fall_x[FALL_NUM];
+  static int fall_y[FALL_NUM];
   static int score;
   static int miss;
+  static int life;
   static int tick;
   static long start_sec;
   static int game_over;
   static int restart;
+  static int i;
 
   // 別のモードからこのモードに来たときの処理、もしくはリスタート時
   if (ud->prev_mode != ud->mode || restart) {
@@ -567,14 +578,12 @@ void do_mode4(UI_DATA* ud) {
 
     // プレイヤーの位置
     player_x = 3;
-    // 落ちてくるやつのx座標
-    fall_x = 0;
-    // 落ちてくるやつのy座標
-    fall_y = 0;
     // スコア
     score = 0;
     // ミスした回数
     miss = 0;
+    // ライフ
+    life = LIFE_MAX;
     // 何秒ごとにLEDを落とすかに関係する変数
     tick = 0;
     // 始まったsec
@@ -582,12 +591,15 @@ void do_mode4(UI_DATA* ud) {
     // ゲーム終了かどうか
     game_over = FALSE;
 
-    // LEDをクリアする
+    for (i = 0; i < FALL_NUM; i++) {
+      fall_x[i] = simple_rand8();
+      fall_y[i] = -i * 3;  // 最初から重ならないようにずらす
+    }
+
     matrix_clear_all();
 
-    // 初期表示
     lcd_putstr(0, 0, "CATCH GAME");
-    lcd_putstr(0, 1, "SCORE=000 M=0");
+    lcd_putstr(0, 1, "S=000 L=3");
   }
 
   switch (ud->sw) {
@@ -605,7 +617,7 @@ void do_mode4(UI_DATA* ud) {
 
     // ゲームオーバーから復活
     case KEY_SHORT_U:
-      restart = TRUE;
+      if (game_over) restart = TRUE;
       break;
 
     // モード0に戻る
@@ -619,33 +631,46 @@ void do_mode4(UI_DATA* ud) {
   }
 
   // 30秒経ったかどうか
-  if ((sec - start_sec) >= 30) {
+  if ((sec - start_sec) >= 30 || life <= 0) {
     game_over = TRUE;
   }
 
   if (game_over == FALSE) {
+    int elapsed = sec - start_sec;
+
+    // 時間が経つほど速くなる
+    int speed;
+    if (elapsed < 10) {
+      speed = 6;
+    } else if (elapsed < 20) {
+      speed = 4;
+    } else {
+      speed = 3;
+    }
+
     /* do_mode4は約1/32秒ごとに呼ばれるので、数回に1回だけ落とす */
-    // 5回に一回
     // ここの回数を変えると落ちる速度を変えられる
+    // speedが小さいほど落ちる速度が速くなる
     tick++;
-    if (tick >= 5) {
+    if (tick >= speed) {
       tick = 0;
-      // 5回に1回yを足して上に動かす
-      fall_y++;
 
-      // 一番上まで来たらそのときのプレイヤーと位置が一緒かチェック
-      if (fall_y >= GAME_H) {
-        if (fall_x == player_x) {
-          score++;
-        } else {
-          miss++;
+      for (i = 0; i < FALL_NUM; i++) {
+        // 数回に1回yを足して上に動かす
+        fall_y[i]++;
+
+        // 一番上まで来たらそのときのプレイヤーと位置が一緒かチェック
+        if (fall_y[i] >= GAME_H) {
+          if (fall_x[i] == player_x) {
+            score++;
+          } else {
+            miss++;
+            life--;
+          }
+
+          fall_y[i] = 0;
+          fall_x[i] = simple_rand8();
         }
-
-        fall_y = 0;
-
-        /* 簡易ランダムっぽく横位置を変える */
-        // if文の中に入れることで、上に来るまではxは固定
-        fall_x = (fall_x + 3) & 0x07;
       }
     }
   }
@@ -653,35 +678,40 @@ void do_mode4(UI_DATA* ud) {
   matrix_clear_all();
 
   if (game_over) {
-    matrix_clear_all();
-
     lcd_clear();
-    lcd_putstr(0, 0, "FINISH");
+    lcd_putstr(0, 0, "GAME OVER");
     lcd_putstr(0, 1, "S=");
     lcd_putdec(2, 1, 3, score);
-    lcd_putstr(6, 1, "M=");
-    lcd_putdec(8, 1, 2, miss);
+    lcd_putstr(7, 1, "M=");
+    lcd_putdec(9, 1, 2, miss);
     return;
   }
 
-  /* 落ちてくるLED */
-  // 毎回呼ばれるたびにセットし直す
-  matrix_set_dot(fall_x, fall_y);
+  // 落ちてくるLEDを表示,3個分
+  for (i = 0; i < FALL_NUM; i++) {
+    matrix_set_dot(fall_x[i], fall_y[i]);
+  }
 
-  /* 下のキャッチャー */
-  // 一番上に固定
+  // キャッチャーを表示
   matrix_set_dot(player_x, GAME_H - 1);
 
   lcd_putstr(0, 0, "CATCH GAME");
+
   // 残り時間
   lcd_putstr(11, 0, "T=");
   lcd_putdec(13, 0, 2, 30 - (sec - start_sec));
+
   // スコア
-  lcd_putstr(0, 1, "SCORE=");
-  lcd_putdec(6, 1, 3, score);
-  // ミス回数
-  lcd_putstr(10, 1, "M=");
-  lcd_putdec(12, 1, 2, miss);
+  lcd_putstr(0, 1, "S=");
+  lcd_putdec(2, 1, 3, score);
+
+  // ライフ
+  lcd_putstr(7, 1, "L=");
+  lcd_putdec(9, 1, 1, life);
+
+  // ミスした回数
+  lcd_putstr(11, 1, "M=");
+  lcd_putdec(13, 1, 2, miss);
 }
 
 void matrix_set(unsigned int pattern[]) {
