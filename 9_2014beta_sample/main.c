@@ -526,11 +526,12 @@ void do_mode3(UI_DATA* ud) {
   if (ud->sw) show_tokei();
 }
 
-// ゲームの縦横、落下するLEDの数、ライフの最大値を定義
+// ゲームの縦横、落下するLEDの数、ライフの最大値、時間を定義
 #define GAME_W 8
 #define GAME_H 8
 #define FALL_NUM 3
-#define LIFE_MAX 3
+#define LIFE_MAX 9
+#define TIME_LIMIT 60
 
 // LEDを全て消す
 static void matrix_clear_all(void) {
@@ -599,7 +600,7 @@ void do_mode4(UI_DATA* ud) {
     matrix_clear_all();
 
     lcd_putstr(0, 0, "CATCH GAME");
-    lcd_putstr(0, 1, "S=000 L=3");
+    lcd_putstr(0, 1, "S=000 L=9");
   }
 
   switch (ud->sw) {
@@ -630,8 +631,8 @@ void do_mode4(UI_DATA* ud) {
       break;
   }
 
-  // 30秒経ったかどうか
-  if ((sec - start_sec) >= 30 || life <= 0) {
+  // 60秒経ったかどうか
+  if ((sec - start_sec) >= TIME_LIMIT || life <= 0) {
     game_over = TRUE;
   }
 
@@ -641,11 +642,11 @@ void do_mode4(UI_DATA* ud) {
     // 時間が経つほど速くなる
     int speed;
     if (elapsed < 10) {
-      speed = 6;
+      speed = 10;
     } else if (elapsed < 20) {
-      speed = 4;
+      speed = 8;
     } else {
-      speed = 3;
+      speed = 6;
     }
 
     /* do_mode4は約1/32秒ごとに呼ばれるので、数回に1回だけ落とす */
@@ -699,7 +700,7 @@ void do_mode4(UI_DATA* ud) {
 
   // 残り時間
   lcd_putstr(11, 0, "T=");
-  lcd_putdec(13, 0, 2, 30 - (sec - start_sec));
+  lcd_putdec(13, 0, 2, TIME_LIMIT - (sec - start_sec));
 
   // スコア
   lcd_putstr(0, 1, "S=");
