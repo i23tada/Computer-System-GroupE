@@ -523,17 +523,6 @@ void do_mode3(UI_DATA* ud) {
       break;
   }
 
-  if (stop_flag == FALSE) {
-    switch (ud->sw) {      /*モード内でのキー入力別操作*/
-      case KEY_LONG_C:     /* 中央キーの長押し */
-        ud->mode = MODE_0; /* 次は，モード0に戻る */
-        break;
-      case KEY_SHORT_C:
-        stop_flag = TRUE;
-        break;
-    }
-  }
-
   if (ud->sw) show_tokei();
 }
 
@@ -567,7 +556,7 @@ void do_mode4(UI_DATA* ud) {
   static int score;
   static int miss;
   static int tick;
-  static int start_sec;
+  static long start_sec;
   static int game_over;
   static int restart;
 
