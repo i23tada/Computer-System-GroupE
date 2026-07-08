@@ -813,10 +813,11 @@ void show_dentaku() {
 }
 
 void do_mode8(UI_DATA* ud) {
-  if (ud->prev_mode != ud->mode) {
+  if (ud->prev_mode != ud->mode || sec_flag == TRUE) {
     lcd_clear();
     lcd_putstr(0, 0, "MODE8:ﾃﾞﾝﾀｸ");
     show_dentaku();
+    sec_flag = FALSE;
   }
 
   switch (ud->sw) {
