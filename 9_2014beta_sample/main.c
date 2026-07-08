@@ -813,7 +813,7 @@ void show_dentaku() {
 }
 
 void do_mode8(UI_DATA* ud) {
-  if (ud->prev_mode != ud->mode || sec_flag == TRUE) {
+  if (ud->prev_mode != ud->mode) {
     lcd_clear();
     lcd_putstr(0, 0, "MODE8:ﾃﾞﾝﾀｸ");
     show_dentaku();
@@ -856,6 +856,8 @@ void do_mode8(UI_DATA* ud) {
       }
       break;
   }
+
+  if(ud->sw) show_dentaku();
 }
 
 int main(void) {
