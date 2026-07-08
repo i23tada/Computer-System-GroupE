@@ -27,6 +27,12 @@ static unsigned int matrix_led_pattern[8] =
     {0x7e7e, 0x1111, 0x1111, 0x0011, 0x007e, 0x7f00, 0x4900, 0x4900};
 /*列0～7のデータ(詳細は，過去のリストを読め)*/
 
+unsigned int gu_pattern[8] = {0x0000, 0x6e00, 0x6e00, 0x6e00, 0x6e00, 0x0e00, 0x3e00, 0x0000};
+
+unsigned int choki_pattern[8] = {0x0000, 0x0000, 0x7e00, 0x7e00, 0x7000, 0x7e00, 0x3e00, 0x0000};
+
+unsigned int pa_pattern[8] = {0x0000, 0x3e00, 0x7e00, 0x7e00, 0x7e00, 0x7e00, 0x3000, 0x0000};
+
 /* int_timera() や int_imterv() の割込ルーチン(ボトムハーフの処理) */
 
 #pragma interrupt /*割込処理ルーチンであることの指定*/
@@ -163,6 +169,7 @@ enum MENU_MODE {
   MODE_OUT_OF_MAX
 };
 
+
 // うぅ。下記のKとkの見分け(大文字小文字の見分け)が付かずに，
 // １時間半の痛恨のロス(2011/12/19 00:37 by T.NITTA)
 enum SW_CODE {
@@ -178,6 +185,22 @@ enum SW_CODE {
   KEY_LONG_R  = (0x80 | (1 << 1)),  // 右長押し
   KEY_LONG_C  = (0x80 | (1 << 0))   // 中央長押し
 };
+
+int sel_arr;
+int SEL_RANG_MAX = 11;
+int SEL_RANG_MIN = 1;
+
+int mdfv_count = 0;
+
+int hand_flag = 0;
+
+int pouse_flag  = FALSE;
+int result_flag = FALSE;
+
+/* 追加 */
+int roulette_count = 0;
+int roulette_hand  = 0;
+
 
 typedef struct _UI_DATA {
   int mode;
@@ -672,7 +695,193 @@ void do_mode4(UI_DATA* ud) {
   lcd_putdec(12, 1, 2, miss);
 }
 
-void do_mode5(UI_DATA* ud) {}
+void matrix_set(unsigned int pattern[]) {
+  int i;
+  for (i = 0; i < 8; i++) {
+    matrix_led_pattern[i] = pattern[i];
+  }
+}
+
+void do_mode5(UI_DATA* ud) {
+  enum HAND { gu = 0, choki = 1, pa = 2 };
+
+  static int result;
+  int sec_catch;
+
+  if (ud->prev_mode != ud->mode) {
+    lcd_clear();
+    lcd_putstr(0, 0, "**ｻｲｼｮﾊｸﾞ-**");
+    sel_arr        = 1;
+    hand_flag      = gu;
+    pouse_flag     = FALSE;
+    result_flag    = FALSE;
+    mdfv_count     = 0;
+    roulette_count = 0;
+    roulette_hand  = 0;
+    matrix_set(gu_pattern);
+  }
+
+  if (pouse_flag) {
+    roulette_count++;
+    /* 約0.15秒ごとに手を切り替える */
+
+    if (roulette_count >= 5) {
+      roulette_count = 0;
+      roulette_hand++;
+
+      if (roulette_hand > 2) {
+        roulette_hand = 0;
+      }
+
+      switch (roulette_hand) {
+        case gu:
+          matrix_set(gu_pattern);
+          break;
+        case choki:
+          matrix_set(choki_pattern);
+          break;
+        case pa:
+          matrix_set(pa_pattern);
+          break;
+      }
+    }
+
+    /* 1秒ごとにカウント */
+    if (sec_flag) {
+      sec_flag = FALSE;
+      mdfv_count++;
+
+      switch (mdfv_count) {
+        case 1:
+          lcd_clear();
+          lcd_putstr(5, 0, "ｼﾞｬﾝ");
+          // snd_play("G");
+          break;
+        case 2:
+          lcd_clear();
+          lcd_putstr(5, 0, "ｹﾝ");
+          // snd_play("A");
+          break;
+        case 3:
+          lcd_clear();
+          lcd_putstr(5, 0, "ﾎﾟﾝ!");
+          // snd_play("C>E");
+          break;
+      }
+    }
+  }
+
+  if (mdfv_count >= 4) {
+    pouse_flag  = FALSE;
+    result_flag = TRUE;
+    mdfv_count  = 0;
+    sec_catch   = sec;
+    result      = (sec_catch + TCNTV) % 3; /* CPUの手をランダムに決定 */
+
+    switch (result) {
+      case gu:
+        matrix_set(gu_pattern);
+        break;
+      case choki:
+        matrix_set(choki_pattern);
+        break;
+      case pa:
+        matrix_set(pa_pattern);
+        break;
+    }
+  }
+
+  /* 結果表示 */
+  if (result_flag == TRUE) {
+    lcd_clear();
+
+    if (result == gu) {
+      lcd_putstr(0, 0, "CPU:ｸﾞｰ");
+    } else if (result == choki) {
+      lcd_putstr(0, 0, "CPU:ﾁｮｷ");
+    } else {
+      lcd_putstr(0, 0, "CPU:ﾊﾟｰ");
+    }
+
+    if (hand_flag == result) {
+      lcd_putstr(0, 1, "DRAW");
+      // snd_play("CCC");
+    } else if ((hand_flag == gu && result == choki) || (hand_flag == choki && result == pa) ||
+               (hand_flag == pa && result == gu)) {
+      lcd_putstr(0, 1, "YOU WIN");
+      // snd_play("C>E>G");
+    } else {
+      lcd_putstr(0, 1, "YOU LOSE");
+      // snd_play("GFE");
+    }
+  }
+
+  switch (ud->sw) {
+    case KEY_LONG_C:
+      ud->mode = MODE_0;
+      break;
+
+    case KEY_SHORT_L:
+      if (!pouse_flag && !result_flag) {
+        if (sel_arr > SEL_RANG_MIN) sel_arr -= 5;
+        lcd_putstr(0, 1, "  ｸﾞｰ  ﾁｮｷ  ﾊﾟｰ");
+        lcd_putstr(sel_arr, 1, ">");
+      }
+      break;
+
+    case KEY_SHORT_R:
+      if (!pouse_flag && !result_flag) {
+        if (sel_arr < SEL_RANG_MAX) sel_arr += 5;
+        lcd_putstr(0, 1, "  ｸﾞｰ  ﾁｮｷ  ﾊﾟｰ");
+        lcd_putstr(sel_arr, 1, ">");
+      }
+      break;
+
+    case KEY_SHORT_C:
+
+      /* 結果表示中ならもう一度遊べるようにする */
+      if (result_flag == TRUE) {
+        result_flag = FALSE;
+        pouse_flag  = FALSE;
+        mdfv_count  = 0;
+        lcd_clear();
+        lcd_putstr(0, 0, "**ｻｲｼｮﾊｸﾞ-**");
+        lcd_putstr(0, 1, "  ｸﾞｰ  ﾁｮｷ  ﾊﾟｰ");
+        lcd_putstr(sel_arr, 1, ">");
+        break;
+      }
+
+      lcd_clear();
+      // snd_play("C");
+
+      switch (sel_arr) {
+        case 1:
+          hand_flag = gu;
+          break;
+        case 6:
+          hand_flag = choki;
+          break;
+        case 11:
+          hand_flag = pa;
+          break;
+      }
+      pouse_flag     = TRUE;
+      mdfv_count     = 0;
+      roulette_count = 0;
+      roulette_hand  = 0;
+      break;
+
+    default:
+      if (!pouse_flag && !result_flag) {
+        lcd_putstr(0, 0, "**ｻｲｼｮﾊｸﾞ-**");
+        lcd_putstr(0, 1, "  ｸﾞｰ  ﾁｮｷ  ﾊﾟｰ");
+        lcd_putstr(sel_arr, 1, ">");
+        break;
+      }
+
+      sec_flag = FALSE;
+  }
+}
 
 // Here is my work space!
 void do_mode6(UI_DATA* ud) {
@@ -960,7 +1169,7 @@ void do_mode8(UI_DATA* ud) {
       break;
   }
 
-  if(ud->sw) show_dentaku();
+  if (ud->sw) show_dentaku();
 }
 
 int main(void) {
