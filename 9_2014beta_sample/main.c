@@ -632,6 +632,7 @@ void do_mode5(UI_DATA* ud){
   }
 
   sec_flag=FALSE;
+  }
 }
 
 
