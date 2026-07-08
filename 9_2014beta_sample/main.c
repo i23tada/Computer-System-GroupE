@@ -919,6 +919,7 @@ void do_mode8(UI_DATA* ud) {
     lcd_clear();
     lcd_putstr(0, 0, "MODE8:ﾃﾞﾝﾀｸ");
     show_dentaku();
+    sec_flag = FALSE;
   }
 
   switch (ud->sw) {
@@ -958,6 +959,8 @@ void do_mode8(UI_DATA* ud) {
       }
       break;
   }
+
+  if(ud->sw) show_dentaku();
 }
 
 int main(void) {
