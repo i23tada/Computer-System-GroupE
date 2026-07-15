@@ -531,7 +531,7 @@ void do_mode3(UI_DATA* ud) {
 #define GAME_H 8
 #define FALL_NUM 3
 #define LIFE_MAX 9
-#define TIME_LIMIT 60
+#define TIME_LIMIT 30
 
 // LEDを全て消す
 static void matrix_clear_all(void) {
@@ -551,15 +551,32 @@ static void matrix_set_dot(int x, int y) {
   matrix_led_pattern[x] |= (0x8000 >> y);
 }
 
-// 0〜7っぽい値を作る簡易乱数
-static int simple_rand8(void) {
-  static int r = 1;
-  r            = (r * 5 + 3) & 0x07;
-  return r;
+static unsigned char rand_state = 123;
+
+// 乱数の初期値を設定
+static void simple_srand(unsigned char seed) {
+  if (seed == 0) {
+    seed = 1;
+  }
+  rand_state = seed;
 }
+
+// 0〜7の乱数
+static int simple_rand8(void) {
+  rand_state ^= rand_state << 3;
+  rand_state ^= rand_state >> 5;
+  rand_state ^= rand_state << 1;
+
+  return rand_state & 0x07;
+}
+
+static unsigned char seed_counter;
 
 // LEDキャッチゲーム
 void do_mode4(UI_DATA* ud) {
+  int elapsed;
+  int remaining;
+  int speed;
   static int player_x;
   static int fall_x[FALL_NUM];
   static int fall_y[FALL_NUM];
@@ -567,15 +584,17 @@ void do_mode4(UI_DATA* ud) {
   static int miss;
   static int life;
   static int tick;
-  static long start_sec;
   static int game_over;
   static int restart;
   static int i;
+  static long game_tick;  // ゲーム開始からの呼び出し回数
+  seed_counter++;
 
   // 別のモードからこのモードに来たときの処理、もしくはリスタート時
   if (ud->prev_mode != ud->mode || restart) {
     restart = FALSE;
     lcd_clear();
+    simple_srand(seed_counter);
 
     // プレイヤーの位置
     player_x = 3;
@@ -587,8 +606,8 @@ void do_mode4(UI_DATA* ud) {
     life = LIFE_MAX;
     // 何秒ごとにLEDを落とすかに関係する変数
     tick = 0;
-    // 始まったsec
-    start_sec = sec;
+    // 経過時間をリセット
+    game_tick = 0;
     // ゲーム終了かどうか
     game_over = FALSE;
 
@@ -631,16 +650,22 @@ void do_mode4(UI_DATA* ud) {
       break;
   }
 
-  // 60秒経ったかどうか
-  if ((sec - start_sec) >= TIME_LIMIT || life <= 0) {
+  // ゲーム中だけ時間を進める
+  if (!game_over) {
+    game_tick++;
+  }
+
+  // do_mode4が約1/32秒ごとに呼ばれる
+  elapsed = game_tick / 32;
+
+  // 制限時間またはライフ切れ
+  if (elapsed >= TIME_LIMIT || life <= 0) {
     game_over = TRUE;
   }
 
   if (game_over == FALSE) {
-    int elapsed = sec - start_sec;
-
     // 時間が経つほど速くなる
-    int speed;
+    speed;
     if (elapsed < 10) {
       speed = 10;
     } else if (elapsed < 20) {
@@ -696,11 +721,18 @@ void do_mode4(UI_DATA* ud) {
   // キャッチャーを表示
   matrix_set_dot(player_x, GAME_H - 1);
 
+  // 残り時間
+  remaining = TIME_LIMIT - elapsed;
+
+  if (remaining < 0) {
+    remaining = 0;
+  }
+
   lcd_putstr(0, 0, "CATCH GAME");
 
   // 残り時間
   lcd_putstr(11, 0, "T=");
-  lcd_putdec(13, 0, 2, TIME_LIMIT - (sec - start_sec));
+  lcd_putdec(13, 0, 2, remaining);
 
   // スコア
   lcd_putstr(0, 1, "S=");
